@@ -1,0 +1,28 @@
+{
+  "site_name": "Panther Gym",
+  "primary_color": "#10b981",
+  "secondary_color": "#0b1220",
+  "text_color": "#ffffff",
+  "logo_path": "assets/logo-panther.png",
+  "bg_image": "assets/bg-panther.jpg",
+  "hero_messages": [
+    "Entrená sin excusas",
+    "Horarios flexibles",
+    "Profes expertos"
+  ],
+  "hero_subtitle": "Tu entrenamiento, tu momento",
+  "about_text": "Somos Panther Gym, especialistas en Kickboxing, Boxeo y K1. Entrená con los mejores.",
+  "contact_text": "Tel: 266-461-1574\nBelgrano 194, San Luis\nInstagram: @panthergym",
+  "link_cliente": "https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php",
+  "link_profesor": "https://multi-gimnasio-51bq.onrender.com/login_profesor.php",
+  "link_admin": "https://multi-gimnasio-51bq.onrender.com/login.php",
+  "youtube_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "instagram_url": "https://instagram.com/tu_cuenta",
+  "facebook_url": "https://facebook.com/tu_cuenta",
+  "google_maps_url": "https://www.google.com/maps/embed?...",
+  "gallery": [
+    "assets/gal1.jpg",
+    "assets/gal2.jpg",
+    "assets/gal3.jpg"
+  ]
+}

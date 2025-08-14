@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FIGHT ACADEMY SCORPIONS | Kickboxing, Boxeo, K1</title>
+<link rel="stylesheet" href="assets/css/styles.css">
+<script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/motivation.js"></script>
+<script defer src="assets/js/menu.js"></script><!-- NUEVO: toggle para móviles -->
+</head><body>
+<nav>
+  <a class="brand" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+    </svg>
+    <span>FIGHT ACADEMY SCORPIONS</span>
+  </a>
+
+  <a class="nav-link" href="disciplinas.html">Disciplinas</a>
+  <a class="nav-link" href="fotos.html">Fotos</a>
+  <a class="nav-link" href="ofertas.html">Ofertas</a>
+  <a class="nav-link" href="promociones.html">Promociones</a>
+  <a class="nav-link" href="ventas.html">Ventas</a>
+  <a class="nav-link" href="equipo.html">Equipo</a>
+
+  <span class="spacer"></span>
+
+  <div class="menu" id="menu-ingresos">
+    <a class="toggle" href="#">Ingresos ▾</a>
+    <!-- ÚNICO submenu -->
+    <div class="submenu">
+      <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
+      <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
+      <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+      <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+    </div>
+  </div>
+
+  <a class="btn btn-ghost" href="contacto.html">Contacto</a>
+</nav>
+
+<main class="container hero">
+  <h1>Entrená fuerte, entrená inteligente</h1>
+  <p class="lead">Kickboxing · Boxeo · K1 — Programas para todas las edades y niveles. Cultura de disciplina, respeto y progreso.</p>
+
+  <section class="flash-wrap">
+    <div class="flash"><span id="mot-phrase">Entrená sin excusas</span></div><!-- FLASH OK -->
+    <div class="fighter-hero">
+      <div class="run-lines"></div>
+      <!-- Inline SVG para animación -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" fill="none">
+        <defs>
+          <linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#22c55e"/>
+            <stop offset="1" stop-color="#14b8a6"/>
+          </linearGradient>
+        </defs>
+        <g class="body" fill="url(#fg)" opacity="0.95">
+          <path d="M90 220c30-20 40-44 54-72 10-22 26-44 46-54 22-12 54-14 78-4 20 8 34 24 46 36 14 14 24 22 40 26 10 2 24 4 32 0 8-4 12-10 14-16 2-6 2-12-2-16-4-6-12-10-18-12 4-2 18-2 26 6 8 6 12 18 10 30-4 16-18 30-34 36-16 6-32 6-50 4-28-4-50-14-78-8-22 4-42 20-64 34-30 18-68 22-100 10-8-2-18-6-20-12-2-6 2-12 10-16 8-4 18-6 30-2z"/>
+          <circle cx="436" cy="128" r="4" fill="#f1f5f9"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <div class="kpis">
+    <div class="kpi"><strong>+200</strong><div class="small">Alumnos</div></div>
+    <div class="kpi"><strong>10</strong><div class="small">Clases/semana</div></div>
+    <div class="kpi"><strong>7</strong><div class="small">Profes</div></div>
+    <div class="kpi"><strong>24/7</strong><div class="small">Enfoque</div></div>
+  </div>
+
+  <section class="section">
+    <div class="grid">
+      <a class="card" href="disciplinas.html">
+        <h3>Disciplinas</h3>
+        <p>K1, Kickboxing, Boxeo, Full Contact y más.</p>
+        <span class="more">Ver programas →</span>
+      </a>
+      <a class="card" href="fotos.html">
+        <h3>Instalaciones</h3>
+        <p>Ring, sala de fuerza, tatami y equipamiento.</p>
+        <span class="more">Ver galería →</span>
+      </a>
+      <a class="card" href="ofertas.html">
+        <h3>Planes y Ofertas</h3>
+        <p>Matriculación, mensualidades y promos por temporada.</p>
+        <span class="more">Ver precios →</span>
+      </a>
+      <a class="card" href="ventas.html">
+        <h3>Tienda</h3>
+        <p>Guantes, vendas, protectores y más.</p>
+        <span class="more">Ver productos →</span>
+      </a>
+    </div>
+  </section>
+
+  <div class="banner">
+    <strong>Promo de bienvenida:</strong> 50% OFF en matrícula + clase de prueba sin cargo.
+  </div>
+</main>
+<footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
+</body></html>
