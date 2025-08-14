@@ -31,7 +31,11 @@
       <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
       <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
       <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-      <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+      <!-- Configuraciones en Render: reemplazá la URL por la tuya -->
+      <a id="ing-config" href="https://TU-APP.onrender.com/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+      <!-- Si preferís local en el mismo hosting con PHP, usá esta (alternativa):
+      <a id="ing-config" href="admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+      -->
     </div>
   </div>
 
