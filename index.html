@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Kickboxing, Boxeo, K1</title>
-<link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/motivation.js"></script>
-<script defer src="assets/js/menu.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIGHT ACADEMY SCORPIONS | Kickboxing, Boxeo, K1</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script defer src="assets/js/config.js"></script>
+  <script defer src="assets/js/motivation.js"></script>
+  <script defer src="assets/js/menu.js"></script>
 </head>
 <body>
 
@@ -45,13 +45,9 @@
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: valor por defecto = LOCALHOST; data-prod = Render -->
+        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
         <a id="ing-config"
-           href="admin/configuraciones.php"
-           data-prod="<a id="ing-config"
-   href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
-   target="_blank" rel="noopener">Configuraciones</a>
-"
+           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
@@ -129,25 +125,6 @@
 <footer>
   <small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small>
 </footer>
-
-<!-- Script mínimo para resolver el enlace de Configuraciones según entorno -->
-<script>
-(function() {
-  const a = document.getElementById('ing-config');
-  if (!a) return;
-  const host = (location.hostname || '').toLowerCase();
-  const isLocal = host === 'localhost' || host === '127.0.0.1';
-  const prodUrl = a.getAttribute('data-prod');
-
-  // En local: usar la ruta relativa del proyecto (admin/configuraciones.php)
-  // En producción: cambiar a la URL del backend PHP en Render
-  if (!isLocal && prodUrl) {
-    a.href = prodUrl;
-  } else {
-    a.href = 'admin/configuraciones.php';
-  }
-})();
-</script>
 
 </body>
 </html>
