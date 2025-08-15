@@ -1,16 +1,25 @@
 <?php
-// admin/configuraciones.php — Panel Único (Config + Disciplinas + Fotos + Videos + Ofertas + Promociones + Ventas + Equipo)
-session_start();
-if (empty($_SESSION['ADMIN_OK'])) { header('Location: login.php'); exit; }
+// admin/configuraciones.php — Panel Único (SIN LOGIN)
+
+// Debug local (comentá en producción si no querés mostrar errores)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Conexión
 require __DIR__ . '/../conexion.php';
 
-/* =========================
-   Helpers
-========================= */
+// Verificación de conexión para evitar cuelgues
+$db_ok = isset($conexion) && $conexion instanceof mysqli;
+if ($db_ok) {
+  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+  $conexion->set_charset('utf8mb4');
+}
+
+// Helpers
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 function up_or_url($inputName, $fallback=''){
-  // Subir archivo o usar URL (en Render es mejor URL por persistencia)
+  // Subir archivo o usar URL (en Render conviene URL)
   if (!empty($_FILES[$inputName]['name'])) {
     $dir = __DIR__ . '/../uploads';
     if (!is_dir($dir)) @mkdir($dir, 0775, true);
@@ -23,29 +32,31 @@ function up_or_url($inputName, $fallback=''){
   return trim($_POST[$inputName] ?? $fallback);
 }
 
-/* =========================
-   Config básica (site_settings)
-========================= */
-$res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
-$data = $res && $res->num_rows ? $res->fetch_assoc() : [];
-
+// Estado
+$data = [];
 $msg_cfg = $msg_disc = $msg_fotos = $msg_videos = $msg_ofe = $msg_promo = $msg_ven = $msg_eq = '';
 
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
+// ========================= Config básica (site_settings)
+if ($db_ok) {
+  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
+  $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
+}
+
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
   $stmt = $conexion->prepare("
     INSERT INTO site_settings
     (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps)
     VALUES(1,?,?,?,?,?,?,?,?,?)
     ON DUPLICATE KEY UPDATE
-    color_principal=VALUES(color_principal),
-    color_secundario=VALUES(color_secundario),
-    fondo_img=VALUES(fondo_img),
-    logo_img=VALUES(logo_img),
-    texto_banner=VALUES(texto_banner),
-    youtube=VALUES(youtube),
-    instagram=VALUES(instagram),
-    facebook=VALUES(facebook),
-    google_maps=VALUES(google_maps)
+      color_principal=VALUES(color_principal),
+      color_secundario=VALUES(color_secundario),
+      fondo_img=VALUES(fondo_img),
+      logo_img=VALUES(logo_img),
+      texto_banner=VALUES(texto_banner),
+      youtube=VALUES(youtube),
+      instagram=VALUES(instagram),
+      facebook=VALUES(facebook),
+      google_maps=VALUES(google_maps)
   ");
   $stmt->bind_param('ssssssssss',
     $_POST['color_principal'], $_POST['color_secundario'],
@@ -58,10 +69,8 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
-/* =========================
-   Disciplinas
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='disciplinas') {
+// ========================= Disciplinas
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='disciplinas') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
@@ -77,15 +86,13 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='disciplinas
     $ok=$stmt->execute(); $stmt->close(); $msg_disc=$ok?'✅ Disciplina guardada':'❌ Error al guardar';
   }
 }
-if (isset($_GET['del_disc'])) {
+if ($db_ok && isset($_GET['del_disc'])) {
   $conexion->query("DELETE FROM disciplinas WHERE id=".(int)$_GET['del_disc']);
   $msg_disc='🗑️ Disciplina eliminada';
 }
 
-/* =========================
-   Fotos
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='fotos') {
+// ========================= Fotos
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='fotos') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
@@ -100,15 +107,13 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='fotos') {
     $ok=$stmt->execute(); $stmt->close(); $msg_fotos=$ok?'✅ Foto guardada':'❌ Error al guardar';
   }
 }
-if (isset($_GET['del_foto'])) {
+if ($db_ok && isset($_GET['del_foto'])) {
   $conexion->query("DELETE FROM fotos WHERE id=".(int)$_GET['del_foto']);
   $msg_fotos='🗑️ Foto eliminada';
 }
 
-/* =========================
-   Videos
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
+// ========================= Videos
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $tipo=$_POST['tipo']??'youtube';
   $video=$_POST['video_url']??''; $cover=up_or_url('cover_url', $_POST['cover_url']??'');
@@ -124,41 +129,51 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
     $ok=$stmt->execute(); $stmt->close(); $msg_videos=$ok?'✅ Video guardado':'❌ Error al guardar';
   }
 }
-if (isset($_GET['del_video'])) {
+if ($db_ok && isset($_GET['del_video'])) {
   $conexion->query("DELETE FROM videos WHERE id=".(int)$_GET['del_video']);
   $msg_videos='🗑️ Video eliminado';
 }
 
-/* =========================
-   Ofertas
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ofertas') {
+// ========================= Ofertas (FIX tipos/cantidad)
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ofertas') {
   $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
-  $precio=(float)($_POST['precio']??0); $desde=$_POST['vigente_desde']??null; $hasta=$_POST['vigente_hasta']??null;
+  $titulo=$_POST['titulo']??'';
+  $descripcion=$_POST['descripcion']??'';
+  $precio=(float)($_POST['precio']??0);
+  $desde=$_POST['vigente_desde']??null;
+  $hasta=$_POST['vigente_hasta']??null;
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+  $orden=(int)($_POST['orden']??0);
+  $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE ofertas SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('ssdsdssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
-    // Ajuste: bind_param no acepta 's' para null fechas; si vienen vacías, pasar null como string ok.
-    $ok=$stmt->execute(); $stmt->close(); $msg_ofe=$ok?'✅ Oferta actualizada':'❌ Error al actualizar';
+    $stmt=$conexion->prepare("
+      UPDATE ofertas
+      SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
+      WHERE id=?
+    ");
+    // s s d s s s i i i
+    $stmt->bind_param('sssdssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
+    $ok=$stmt->execute(); $stmt->close();
+    $msg_ofe = $ok ? '✅ Oferta actualizada' : '❌ Error al actualizar';
   } else {
-    $stmt=$conexion->prepare("INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo) VALUES (?,?,?,?,?,?,?,?)");
-    $stmt->bind_param('ssdsdssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_ofe=$ok?'✅ Oferta guardada':'❌ Error al guardar';
+    $stmt=$conexion->prepare("
+      INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo)
+      VALUES (?,?,?,?,?,?,?,?)
+    ");
+    // s s d s s s i i
+    $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo);
+    $ok=$stmt->execute(); $stmt->close();
+    $msg_ofe = $ok ? '✅ Oferta guardada' : '❌ Error al guardar';
   }
 }
-if (isset($_GET['del_ofe'])) {
+if ($db_ok && isset($_GET['del_ofe'])) {
   $conexion->query("DELETE FROM ofertas WHERE id=".(int)$_GET['del_ofe']);
   $msg_ofe='🗑️ Oferta eliminada';
 }
 
-/* =========================
-   Promociones
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
+// ========================= Promociones
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
@@ -167,22 +182,20 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones
   if ($id>0){
     $stmt=$conexion->prepare("UPDATE promociones SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?");
     $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promo actualizada':'❌ Error al actualizar';
+    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promoción actualizada':'❌ Error al actualizar';
   } else {
     $stmt=$conexion->prepare("INSERT INTO promociones (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)");
     $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promo guardada':'❌ Error al guardar';
+    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promoción guardada':'❌ Error al guardar';
   }
 }
-if (isset($_GET['del_promo'])) {
+if ($db_ok && isset($_GET['del_promo'])) {
   $conexion->query("DELETE FROM promociones WHERE id=".(int)$_GET['del_promo']);
   $msg_promo='🗑️ Promoción eliminada';
 }
 
-/* =========================
-   Ventas (productos)
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
+// ========================= Ventas (productos) — FIX
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
   $id=(int)($_POST['id']??0);
   $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
   $precio=(float)($_POST['precio']??0); $stock=(int)($_POST['stock']??0);
@@ -190,38 +203,31 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('ssdsi iii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id);
-    // espacios en tipos rompen; corregimos con tipos continuos:
-  } 
-  if (isset($stmt) && $id>0){
-    $stmt->bind_param('ssdsi iii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id); // evitamos warnings
-  }
-  if ($id>0){
-    $stmt = $conexion->prepare("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('ssdsi iii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id);
-  }
-
-  if ($id>0){
-    // Rehacer limpio:
-    $stmt = $conexion->prepare("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?");
+    $stmt=$conexion->prepare("
+      UPDATE ventas
+      SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=?
+      WHERE id=?
+    ");
+    // s s d s i i i i
     $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_ven=$ok?'✅ Producto actualizado':'❌ Error al actualizar';
+    $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto actualizado' : '❌ Error al actualizar';
   } else {
-    $stmt=$conexion->prepare("INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo) VALUES (?,?,?,?,?,?,?)");
+    $stmt=$conexion->prepare("
+      INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo)
+      VALUES (?,?,?,?,?,?,?)
+    ");
+    // s s d s i i i
     $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_ven=$ok?'✅ Producto guardado':'❌ Error al guardar';
+    $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto guardado' : '❌ Error al guardar';
   }
 }
-if (isset($_GET['del_ven'])) {
+if ($db_ok && isset($_GET['del_ven'])) {
   $conexion->query("DELETE FROM ventas WHERE id=".(int)$_GET['del_ven']);
   $msg_ven='🗑️ Producto eliminado';
 }
 
-/* =========================
-   Equipo
-========================= */
-if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='equipo') {
+// ========================= Equipo
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='equipo') {
   $id=(int)($_POST['id']??0);
   $nombre=$_POST['nombre']??''; $rol=$_POST['rol']??''; $bio=$_POST['bio']??'';
   $foto=up_or_url('foto_url', $_POST['foto_url']??''); $insta=$_POST['instagram']??'';
@@ -237,25 +243,26 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='equipo') {
     $ok=$stmt->execute(); $stmt->close(); $msg_eq=$ok?'✅ Miembro guardado':'❌ Error al guardar';
   }
 }
-if (isset($_GET['del_eq'])) {
+if ($db_ok && isset($_GET['del_eq'])) {
   $conexion->query("DELETE FROM equipo WHERE id=".(int)$_GET['del_eq']);
   $msg_eq='🗑️ Miembro eliminado';
 }
 
-/* =========================
-   Listados (últimos 15) 
-========================= */
+// ========================= Listados (últimos 15)
 $disciplinas=$fotos=$videos=$ofertas=$promos=$ventas=$equipo=[];
-
-$r=$conexion->query("SELECT * FROM disciplinas ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $disciplinas[]=$x;
-$r=$conexion->query("SELECT * FROM fotos       ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $fotos[]=$x;
-$r=$conexion->query("SELECT * FROM videos      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $videos[]=$x;
-$r=$conexion->query("SELECT * FROM ofertas     ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ofertas[]=$x;
-$r=$conexion->query("SELECT * FROM promociones ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $promos[]=$x;
-$r=$conexion->query("SELECT * FROM ventas      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ventas[]=$x;
-$r=$conexion->query("SELECT * FROM equipo      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $equipo[]=$x;
-
-?><!doctype html><html lang="es"><head>
+if ($db_ok) {
+  $r=$conexion->query("SELECT * FROM disciplinas ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $disciplinas[]=$x;
+  $r=$conexion->query("SELECT * FROM fotos       ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $fotos[]=$x;
+  $r=$conexion->query("SELECT * FROM videos      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $videos[]=$x;
+  $r=$conexion->query("SELECT * FROM ofertas     ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ofertas[]=$x;
+  $r=$conexion->query("SELECT * FROM promociones ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $promos[]=$x;
+  $r=$conexion->query("SELECT * FROM ventas      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ventas[]=$x;
+  $r=$conexion->query("SELECT * FROM equipo      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $equipo[]=$x;
+}
+?>
+<!doctype html>
+<html lang="es">
+<head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Configuraciones</title>
 <style>
@@ -271,25 +278,29 @@ input,textarea,select{width:100%;padding:10px;border-radius:10px;border:1px soli
 textarea{min-height:90px}
 .btn{background:#22c55e;border:0;color:#000;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
 .msg{margin:12px 0;padding:10px;border-radius:8px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
+.warn{margin:12px 0;padding:10px;border-radius:8px;background:rgba(255,193,7,.15);border:1px solid rgba(255,193,7,.35)}
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.12);vertical-align:top}
 img.thumb{height:52px;border-radius:8px}
 .badge{font-size:.85rem;opacity:.85}
 </style>
-</head><body>
+</head>
+<body>
 <div class="wrap">
   <div class="top">
     <h1>Configuraciones del sitio</h1>
     <div>
-      <a class="link" href="../get_config.php" target="_blank">Ver JSON</a> ·
-      <a class="link" href="../" target="_blank">Ver sitio</a> ·
-      <a class="link" href="logout.php">Salir</a>
+      <a class="link" href="../" target="_blank">Ver sitio</a>
     </div>
   </div>
 
+  <?php if(!$db_ok): ?>
+    <div class="warn">⚠️ Sin conexión a la base de datos. Podés navegar el panel, pero no se guardará hasta que la DB responda.</div>
+  <?php endif; ?>
+
   <?php if($msg_cfg): ?><div class="msg"><?=h($msg_cfg)?></div><?php endif; ?>
 
-  <!-- ==================== BLOQUE: CONFIG BÁSICA ==================== -->
+  <!-- ==================== CONFIG BÁSICA ==================== -->
   <form method="post" class="card">
     <input type="hidden" name="__form" value="config">
     <h2>Colores & Fondo</h2>
@@ -314,10 +325,10 @@ img.thumb{height:52px;border-radius:8px}
       <div><label>Facebook</label><input type="url" name="facebook" value="<?=v('facebook')?>"></div>
       <div class="grid-1"><label>Google Maps (embed URL)</label><textarea name="google_maps"><?=v('google_maps')?></textarea></div>
     </div>
-    <div style="margin-top:16px"><button class="btn" type="submit">Guardar configuraciones</button></div>
+    <div style="margin-top:16px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar configuraciones</button></div>
   </form>
 
-  <!-- ==================== BLOQUE: DISCIPLINAS ==================== -->
+  <!-- ==================== DISCIPLINAS ==================== -->
   <?php if($msg_disc): ?><div class="msg"><?=h($msg_disc)?></div><?php endif; ?>
   <div class="card">
     <h2>Disciplinas — alta rápida</h2>
@@ -331,7 +342,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar disciplina</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar disciplina</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15</h3>
@@ -341,10 +352,10 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($disciplinas as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['imagen_url']?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
           <td><?= h($r['titulo']) ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_disc=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$disciplinas): ?><tr><td colspan="6">Sin disciplinas</td></tr><?php endif; ?>
@@ -352,7 +363,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: FOTOS ==================== -->
+  <!-- ==================== FOTOS ==================== -->
   <?php if($msg_fotos): ?><div class="msg"><?=h($msg_fotos)?></div><?php endif; ?>
   <div class="card">
     <h2>Galería de Fotos — alta rápida</h2>
@@ -365,7 +376,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar foto</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar foto</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 fotos</h3>
@@ -375,10 +386,10 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($fotos as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['imagen_url']?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
           <td><?= h($r['titulo']) ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_foto=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$fotos): ?><tr><td colspan="6">Sin fotos</td></tr><?php endif; ?>
@@ -386,7 +397,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: VIDEOS ==================== -->
+  <!-- ==================== VIDEOS ==================== -->
   <?php if($msg_videos): ?><div class="msg"><?=h($msg_videos)?></div><?php endif; ?>
   <div class="card">
     <h2>Videos cortos / Reels — alta rápida</h2>
@@ -407,7 +418,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar video</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar video</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 videos</h3>
@@ -419,10 +430,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= (int)$r['id'] ?></td>
           <td><?= h($r['titulo']) ?></td>
           <td><?= h($r['tipo']) ?></td>
-          <td><a class="link" href="<?=h($r['video_url'])?>" target="_blank">Abrir</a></td>
-          <td><?= $r['cover_url']?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
+          <td><?= !empty($r['video_url']) ? '<a class="link" href="'.h($r['video_url']).'" target="_blank">Abrir</a>' : '' ?></td>
+          <td><?= !empty($r['cover_url'])?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_video=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$videos): ?><tr><td colspan="8">Sin videos</td></tr><?php endif; ?>
@@ -430,7 +441,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: OFERTAS ==================== -->
+  <!-- ==================== OFERTAS ==================== -->
   <?php if($msg_ofe): ?><div class="msg"><?=h($msg_ofe)?></div><?php endif; ?>
   <div class="card">
     <h2>Ofertas — alta rápida</h2>
@@ -447,7 +458,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar oferta</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar oferta</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 ofertas</h3>
@@ -457,13 +468,13 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($ofertas as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['imagen_url']?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
           <td><?= h($r['titulo']) ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
           <td><?= h($r['vigente_desde']) ?></td>
           <td><?= h($r['vigente_hasta']) ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_ofe=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$ofertas): ?><tr><td colspan="9">Sin ofertas</td></tr><?php endif; ?>
@@ -471,7 +482,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: PROMOCIONES ==================== -->
+  <!-- ==================== PROMOCIONES ==================== -->
   <?php if($msg_promo): ?><div class="msg"><?=h($msg_promo)?></div><?php endif; ?>
   <div class="card">
     <h2>Promociones — alta rápida</h2>
@@ -485,7 +496,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar promoción</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar promoción</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 promociones</h3>
@@ -495,10 +506,10 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($promos as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['imagen_url']?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
           <td><?= h($r['titulo']) ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_promo=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$promos): ?><tr><td colspan="6">Sin promociones</td></tr><?php endif; ?>
@@ -506,7 +517,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: VENTAS ==================== -->
+  <!-- ==================== VENTAS ==================== -->
   <?php if($msg_ven): ?><div class="msg"><?=h($msg_ven)?></div><?php endif; ?>
   <div class="card">
     <h2>Ventas (Productos) — alta rápida</h2>
@@ -522,7 +533,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar producto</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar producto</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 productos</h3>
@@ -532,12 +543,12 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($ventas as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['imagen_url']?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
           <td><?= h($r['nombre']) ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
           <td><?= (int)$r['stock'] ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_ven=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$ventas): ?><tr><td colspan="8">Sin productos</td></tr><?php endif; ?>
@@ -545,7 +556,7 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== BLOQUE: EQUIPO ==================== -->
+  <!-- ==================== EQUIPO ==================== -->
   <?php if($msg_eq): ?><div class="msg"><?=h($msg_eq)?></div><?php endif; ?>
   <div class="card">
     <h2>Equipo — alta rápida</h2>
@@ -561,7 +572,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit">Guardar miembro</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar miembro</button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 miembros</h3>
@@ -571,11 +582,11 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($equipo as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= $r['foto_url']?'<img class="thumb" src="'.h($r['foto_url']).'">':'' ?></td>
+          <td><?= !empty($r['foto_url'])?'<img class="thumb" src="'.h($r['foto_url']).'">':'' ?></td>
           <td><?= h($r['nombre']) ?></td>
           <td><?= h($r['rol']) ?></td>
           <td><?= (int)$r['orden'] ?></td>
-          <td><?= $r['activo']?'Sí':'No' ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_eq=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
         </tr>
       <?php endforeach; if(!$equipo): ?><tr><td colspan="7">Sin miembros</td></tr><?php endif; ?>
@@ -584,4 +595,5 @@ img.thumb{height:52px;border-radius:8px}
   </div>
 
 </div>
-</body></html>
+</body>
+</html>

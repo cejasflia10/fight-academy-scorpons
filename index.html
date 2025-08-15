@@ -1,26 +1,35 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FIGHT ACADEMY SCORPIONS | Kickboxing, Boxeo, K1</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
 <script defer src="assets/js/motivation.js"></script>
-<script defer src="assets/js/menu.js"></script><!-- NUEVO: toggle para móviles -->
-</head><body>
+<script defer src="assets/js/menu.js"></script>
+</head>
+<body>
+
+<!-- NAV -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
-      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22c55e"/>
+          <stop offset="1" stop-color="#14b8a6"/>
+        </linearGradient>
+      </defs>
     </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
   <!-- Botón hamburguesa -->
-  <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">
-    ☰
-  </button>
+  <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">☰</button>
 
-  <!-- Links colapsables en mobile -->
+  <!-- Links colapsables -->
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
     <a class="nav-link" href="fotos.html">Fotos</a>
@@ -33,10 +42,14 @@
     <div class="menu" id="menu-ingresos">
       <button class="toggle" aria-expanded="false">Ingresos ▾</button>
       <div class="submenu" hidden>
-        <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
-        <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
-        <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+        <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
+        <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
+        <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+        <!-- Configuraciones: valor por defecto = LOCALHOST; data-prod = Render -->
+        <a id="ing-config"
+           href="admin/configuraciones.php"
+           data-prod="https://multi-gimnasio-51bq.onrender.com/admin/configuraciones.php"
+           target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
 
@@ -44,15 +57,16 @@
   </div>
 </nav>
 
+<!-- HERO -->
 <main class="container hero">
   <h1>Entrená fuerte, entrená inteligente</h1>
   <p class="lead">Kickboxing · Boxeo · K1 — Programas para todas las edades y niveles. Cultura de disciplina, respeto y progreso.</p>
 
+  <!-- Flash + Animación -->
   <section class="flash-wrap">
-    <div class="flash"><span id="mot-phrase">Entrená sin excusas</span></div><!-- FLASH OK -->
+    <div class="flash"><span id="mot-phrase">Entrená sin excusas</span></div>
     <div class="fighter-hero">
       <div class="run-lines"></div>
-      <!-- Inline SVG para animación -->
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" fill="none">
         <defs>
           <linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
@@ -68,6 +82,7 @@
     </div>
   </section>
 
+  <!-- KPIs -->
   <div class="kpis">
     <div class="kpi"><strong>+200</strong><div class="small">Alumnos</div></div>
     <div class="kpi"><strong>10</strong><div class="small">Clases/semana</div></div>
@@ -75,6 +90,7 @@
     <div class="kpi"><strong>24/7</strong><div class="small">Enfoque</div></div>
   </div>
 
+  <!-- Secciones -->
   <section class="section">
     <div class="grid">
       <a class="card" href="disciplinas.html">
@@ -100,9 +116,35 @@
     </div>
   </section>
 
+  <!-- Banner -->
   <div class="banner">
     <strong>Promo de bienvenida:</strong> 50% OFF en matrícula + clase de prueba sin cargo.
   </div>
 </main>
-<footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
-</body></html>
+
+<!-- FOOTER -->
+<footer>
+  <small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small>
+</footer>
+
+<!-- Script mínimo para resolver el enlace de Configuraciones según entorno -->
+<script>
+(function() {
+  const a = document.getElementById('ing-config');
+  if (!a) return;
+  const host = (location.hostname || '').toLowerCase();
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  const prodUrl = a.getAttribute('data-prod');
+
+  // En local: usar la ruta relativa del proyecto (admin/configuraciones.php)
+  // En producción: cambiar a la URL del backend PHP en Render
+  if (!isLocal && prodUrl) {
+    a.href = prodUrl;
+  } else {
+    a.href = 'admin/configuraciones.php';
+  }
+})();
+</script>
+
+</body>
+</html>
