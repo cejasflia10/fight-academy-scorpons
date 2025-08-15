@@ -3,41 +3,53 @@
 <title>FIGHT ACADEMY SCORPIONS | Ofertas</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/menu.js"></script>
+<style>
+  .offers{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:720px){.offers{grid-template-columns:repeat(2,1fr)}}
+  .offer{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
+  .offer .img{aspect-ratio:16/9;background:#0b0d11}
+  .offer .body{padding:12px}
+  .meta{color:#9aa3b2;font-size:12px;margin:6px 0}
+  .price{font-weight:800}
+</style>
 </head><body>
-
-<nav>
-  <a class="brand" href="index.html">
-    <svg viewBox='0 0 24 24' fill='none'><path d='M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z' stroke='url(#g)' stroke-width='1.5'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#22c55e'/><stop offset='1' stop-color='#14b8a6'/></linearGradient></defs></svg>
-    <span>FIGHT ACADEMY SCORPIONS</span>
-  </a>
-  <a class="nav-link" href="disciplinas.html">Disciplinas</a>
-  <a class="nav-link" href="fotos.html">Fotos</a>
-  <a class="nav-link" href="ofertas.html">Ofertas</a>
-  <a class="nav-link" href="promociones.html">Promociones</a>
-  <a class="nav-link" href="ventas.html">Ventas</a>
-  <a class="nav-link" href="equipo.html">Equipo</a>
-  <span class="spacer"></span>
-  <div class="menu">
-  <a class="toggle">Ingresos ▾</a>
-  <div class="submenu">
-    <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
-    <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
-    <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-    <a id="ing-login" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">Login</a>
-  </div>
-</div>
+<nav> <!-- (nav igual que arriba, abreviado por espacio) -->
+  <a class="brand" href="index.html"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs></svg><span>FIGHT ACADEMY SCORPIONS</span></a>
+  <a class="nav-link" href="disciplinas.html">Disciplinas</a><a class="nav-link" href="fotos.html">Fotos</a><a class="nav-link" href="ofertas.html">Ofertas</a><a class="nav-link" href="promociones.html">Promociones</a><a class="nav-link" href="ventas.html">Ventas</a><a class="nav-link" href="equipo.html">Equipo</a><span class="spacer"></span>
+  <div class="menu"><a class="toggle" href="#">Ingresos ▾</a><div class="submenu"><a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank">App (General)</a><a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank">Ingreso Clientes</a><a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank">Ingreso Profesores</a><a href="https://TU-APP.onrender.com/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a></div></div>
   <a class="btn btn-ghost" href="contacto.html">Contacto</a>
 </nav>
 
 <main class="container">
-
   <h1>Ofertas</h1>
-  <div class="list">
-    <div class="item"><strong>Plan Standard</strong><div class="small">Clases grupales ilimitadas</div><div class="price">$ 18.000 ARS</div></div>
-    <div class="item"><strong>Plan Premium</strong><div class="small">2 clases personalizadas</div><div class="price">$ 25.000 ARS</div></div>
-    <div class="item"><strong>Matriculación</strong><div class="small">50% OFF</div><div class="price">$ 5.000 ARS</div></div>
-  </div>
-
+  <div class="offers" id="offers"></div>
 </main>
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<script>
+(function(){
+  const API='https://TU-APP.onrender.com/api.php?sec=ofertas&active=1&limit=200';
+  fetch(API).then(r=>r.json()).then(d=>{
+    const box=document.getElementById('offers'); if(!box) return;
+    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto nuevas ofertas.</div>'; return; }
+    box.innerHTML=d.items.map(o=>`
+      <div class="offer">
+        ${o.imagen_url?`<img class="img" src="${escA(o.imagen_url)}" alt="${escA(o.titulo||'')}">`:''}
+        <div class="body">
+          <h3 class="title">${esc(o.titulo||'')}</h3>
+          ${o.descripcion?`<p class="meta">${esc(o.descripcion)}</p>`:''}
+          <div class="meta">
+            ${o.vigente_desde?`Desde: ${esc(o.vigente_desde)} · `:''}
+            ${o.vigente_hasta?`Hasta: ${esc(o.vigente_hasta)}`:''}
+          </div>
+          <div class="price">$ ${fmt(o.precio||0)}</div>
+        </div>
+      </div>`).join('');
+  });
+  function fmt(n){n=Number(n||0);return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+})();
+</script>
 </body></html>

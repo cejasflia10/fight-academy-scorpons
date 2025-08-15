@@ -3,11 +3,23 @@
 <title>FIGHT ACADEMY SCORPIONS | Equipo</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/menu.js"></script>
+<style>
+  .team{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  @media(min-width:720px){.team{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
+  .member{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
+  .member .ph{aspect-ratio:1/1;background:#0b0d11}
+  .member .body{padding:12px}
+  .member h3{margin:0 0 6px}
+  .member .role{color:#9aa3b2;font-size:12px;margin-bottom:8px}
+</style>
 </head><body>
-
 <nav>
   <a class="brand" href="index.html">
-    <svg viewBox='0 0 24 24' fill='none'><path d='M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z' stroke='url(#g)' stroke-width='1.5'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#22c55e'/><stop offset='1' stop-color='#14b8a6'/></linearGradient></defs></svg>
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+    </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
   <a class="nav-link" href="disciplinas.html">Disciplinas</a>
@@ -17,28 +29,43 @@
   <a class="nav-link" href="ventas.html">Ventas</a>
   <a class="nav-link" href="equipo.html">Equipo</a>
   <span class="spacer"></span>
-  <div class="menu">
-  <a class="toggle">Ingresos ▾</a>
-  <div class="submenu">
-    <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
-    <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
-    <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-    <a id="ing-login" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">Login</a>
+  <div class="menu" id="menu-ingresos">
+    <a class="toggle" href="#">Ingresos ▾</a>
+    <div class="submenu">
+      <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
+      <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
+      <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+      <a href="https://TU-APP.onrender.com/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+    </div>
   </div>
-</div>
   <a class="btn btn-ghost" href="contacto.html">Contacto</a>
 </nav>
 
 <main class="container">
-
-  <h1>Equipo Técnico</h1>
-  <div class="grid">
-    <div class="card"><h3>David Cabral</h3><p>Kickboxing · Boxeo — Preparación física y técnica.</p></div>
-    <div class="card"><h3>Renzo Aguirre</h3><p>Boxeo · Kickboxing · K1 — Combinaciones y táctica.</p></div>
-    <div class="card"><h3>Emiliano González</h3><p>Kickboxing — Planes competitivos.</p></div>
-    <div class="card"><h3>Mía Pasini</h3><p>Niños y Niñas — Coordinación y confianza.</p></div>
-  </div>
-
+  <h1>Nuestro Equipo</h1>
+  <div class="team" id="team"></div>
 </main>
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<script>
+(function(){
+  const API='https://TU-APP.onrender.com/api.php?sec=equipo&active=1&limit=100';
+  fetch(API).then(r=>r.json()).then(d=>{
+    const box=document.getElementById('team'); if(!box) return;
+    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto presentamos al equipo.</div>'; return; }
+    box.innerHTML=d.items.map(m=>`
+      <div class="member">
+        ${m.foto_url?`<img class="ph" src="${escA(m.foto_url)}" alt="${escA(m.nombre||'')}">`:''}
+        <div class="body">
+          <h3>${esc(m.nombre||'')}</h3>
+          ${m.rol?`<div class="role">${esc(m.rol)}</div>`:''}
+          ${m.bio?`<p>${esc(m.bio)}</p>`:''}
+          ${m.instagram?`<div class="meta"><a class="link" href="${escA(m.instagram)}" target="_blank" rel="noopener">Instagram</a></div>`:''}
+        </div>
+      </div>`).join('');
+  });
+  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+})();
+</script>
 </body></html>

@@ -1,14 +1,16 @@
 <!DOCTYPE html><html lang="es"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Fotos</title>
+<title>FIGHT ACADEMY SCORPIONS | Videos</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
 <script defer src="assets/js/menu.js"></script>
 <style>
-  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-  @media(min-width:600px){.gallery{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}}
-  .gallery a{border:1px solid #1b1f27;border-radius:12px;overflow:hidden;display:block;background:#0b0d11}
-  .gallery img{width:100%;height:180px;object-fit:cover}
+  .reels{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  @media(min-width:700px){.reels{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+  .reel{border:1px solid #1b1f27;border-radius:12px;padding:10px;background:linear-gradient(180deg,#12141a,#0f1115)}
+  .reel h4{margin:4px 6px 10px}
+  .frame{position:relative;padding-top:177%;border-radius:10px;overflow:hidden;background:#0b0d11}
+  .frame iframe,.frame video{position:absolute;inset:0;width:100%;height:100%}
 </style>
 </head><body>
 <nav>
@@ -36,22 +38,27 @@
 </nav>
 
 <main class="container">
-  <h1>Fotos</h1>
-  <div class="gallery" id="galeria"></div>
+  <h1>Videos</h1>
+  <div class="reels" id="reels"></div>
 </main>
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
 
 <script>
 (function(){
-  const API='https://TU-APP.onrender.com/api.php?sec=fotos&active=1&limit=300';
+  const API='https://TU-APP.onrender.com/api.php?sec=videos&active=1&limit=100';
   fetch(API).then(r=>r.json()).then(d=>{
-    const box=document.getElementById('galeria'); if(!box) return;
-    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto más fotos.</div>'; return; }
-    box.innerHTML=d.items.map(f=>`
-      <a href="${escA(f.imagen_url)}" target="_blank" rel="noopener">
-        <img src="${escA(f.imagen_url)}" alt="${escA(f.titulo||'')}">
-      </a>`).join('');
+    const box=document.getElementById('reels'); if(!box) return;
+    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto más videos.</div>'; return; }
+    box.innerHTML=d.items.map(v=>{
+      let embed='';
+      if(v.tipo==='youtube'){ const id=yid(v.video_url||''); embed=`<iframe src="https://www.youtube.com/embed/${id}" loading="lazy" allowfullscreen></iframe>`; }
+      else if(v.tipo==='instagram'){ embed=`<iframe src="${escA(v.video_url)}" loading="lazy"></iframe>`; }
+      else { embed=`<video src="${escA(v.video_url)}" controls playsinline preload="metadata"></video>`; }
+      return `<div class="reel">${v.titulo?`<h4>${esc(v.titulo)}</h4>`:''}<div class="frame">${embed}</div></div>`;
+    }).join('');
   });
+  function yid(u){try{if(u.includes('youtu.be/'))return u.split('youtu.be/')[1].split(/[?&#]/)[0];const x=new URL(u);if(x.hostname.includes('youtube.com'))return x.searchParams.get('v')||'';}catch(e){}return u;}
+  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
   function escA(s){return String(s||'').replace(/"/g,'&quot;')}
 })();
 </script>

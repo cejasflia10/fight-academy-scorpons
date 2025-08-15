@@ -6,36 +6,42 @@
 <script defer src="assets/js/motivation.js"></script>
 <script defer src="assets/js/menu.js"></script><!-- NUEVO: toggle para móviles -->
 </head><body>
-<nav>
-  <a class="brand" href="index.html">
-    <svg viewBox="0 0 24 24" fill="none">
+<nav class="site-nav">
+  <a class="brand" href="index.html" aria-label="Inicio">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
       <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
     </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
-  <a class="nav-link" href="disciplinas.html">Disciplinas</a>
-  <a class="nav-link" href="fotos.html">Fotos</a>
-  <a class="nav-link" href="ofertas.html">Ofertas</a>
-  <a class="nav-link" href="promociones.html">Promociones</a>
-  <a class="nav-link" href="ventas.html">Ventas</a>
-  <a class="nav-link" href="equipo.html">Equipo</a>
+  <!-- Botón hamburguesa -->
+  <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">
+    ☰
+  </button>
 
-  <span class="spacer"></span>
+  <!-- Links colapsables en mobile -->
+  <div id="nav-links" class="nav-links">
+    <a class="nav-link" href="disciplinas.html">Disciplinas</a>
+    <a class="nav-link" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="ofertas.html">Ofertas</a>
+    <a class="nav-link" href="promociones.html">Promociones</a>
+    <a class="nav-link" href="ventas.html">Ventas</a>
+    <a class="nav-link" href="equipo.html">Equipo</a>
 
-  <div class="menu" id="menu-ingresos">
-    <a class="toggle" href="#">Ingresos ▾</a>
-    <!-- ÚNICO submenu -->
-    <div class="submenu">
-      <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
-      <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
-      <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-      <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+    <!-- Submenú Ingresos -->
+    <div class="menu" id="menu-ingresos">
+      <button class="toggle" aria-expanded="false">Ingresos ▾</button>
+      <div class="submenu" hidden>
+        <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
+        <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
+        <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+        <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+      </div>
     </div>
-  </div>
 
-  <a class="btn btn-ghost" href="contacto.html">Contacto</a>
+    <a class="btn btn-ghost" href="contacto.html">Contacto</a>
+  </div>
 </nav>
 
 <main class="container hero">

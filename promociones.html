@@ -3,11 +3,21 @@
 <title>FIGHT ACADEMY SCORPIONS | Promociones</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/menu.js"></script>
+<style>
+  .promos{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:720px){.promos{grid-template-columns:repeat(2,1fr)}}
+  .promo{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
+  .promo .img{aspect-ratio:16/9;background:#0b0d11}
+  .promo .body{padding:12px}
+</style>
 </head><body>
-
 <nav>
   <a class="brand" href="index.html">
-    <svg viewBox='0 0 24 24' fill='none'><path d='M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z' stroke='url(#g)' stroke-width='1.5'/><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#22c55e'/><stop offset='1' stop-color='#14b8a6'/></linearGradient></defs></svg>
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/></linearGradient></defs>
+    </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
   <a class="nav-link" href="disciplinas.html">Disciplinas</a>
@@ -17,27 +27,41 @@
   <a class="nav-link" href="ventas.html">Ventas</a>
   <a class="nav-link" href="equipo.html">Equipo</a>
   <span class="spacer"></span>
-  <div class="menu">
-  <a class="toggle">Ingresos ▾</a>
-  <div class="submenu">
-    <a id="ing-app" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
-    <a id="ing-clientes" href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
-    <a id="ing-profesores" href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-    <a id="ing-login" href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">Login</a>
+  <div class="menu" id="menu-ingresos">
+    <a class="toggle" href="#">Ingresos ▾</a>
+    <div class="submenu">
+      <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
+      <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
+      <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+      <a href="https://TU-APP.onrender.com/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
+    </div>
   </div>
-</div>
   <a class="btn btn-ghost" href="contacto.html">Contacto</a>
 </nav>
 
 <main class="container">
-
   <h1>Promociones</h1>
-  <div class="list">
-    <div class="item"><strong>2x1 Amigos</strong><div class="small">Primer mes</div></div>
-    <div class="item"><strong>Referidos</strong><div class="small">Traé 3 y ganá 1 mes gratis</div></div>
-    <div class="item"><strong>Pack Competencia</strong><div class="small">Premium + 10% OFF tienda</div></div>
-  </div>
-
+  <div class="promos" id="promos"></div>
 </main>
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<script>
+(function(){
+  const API='https://TU-APP.onrender.com/api.php?sec=promociones&active=1&limit=200';
+  fetch(API).then(r=>r.json()).then(d=>{
+    const box=document.getElementById('promos'); if(!box) return;
+    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto nuevas promos.</div>'; return; }
+    box.innerHTML=d.items.map(p=>`
+      <div class="promo">
+        ${p.imagen_url?`<img class="img" src="${escA(p.imagen_url)}" alt="${escA(p.titulo||'')}">`:''}
+        <div class="body">
+          <h3>${esc(p.titulo||'')}</h3>
+          ${p.descripcion?`<p class="meta">${esc(p.descripcion)}</p>`:''}
+        </div>
+      </div>`).join('');
+  });
+  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+})();
+</script>
 </body></html>
