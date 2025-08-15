@@ -1,44 +1,214 @@
 <?php
 // admin/configuraciones.php — Panel Único (SIN LOGIN)
 
-// Debug local (comentá en producción si no querés mostrar errores)
+// Debug (podés apagar en prod)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Conexión
+// ==================== Conexión ====================
 require __DIR__ . '/../conexion.php';
 
-// Verificación de conexión para evitar cuelgues
+// Estado de conexión
 $db_ok = isset($conexion) && $conexion instanceof mysqli;
 if ($db_ok) {
-  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-  $conexion->set_charset('utf8mb4');
+  if (function_exists('mysqli_report')) { mysqli_report(MYSQLI_REPORT_OFF); } // evita fatales por mysql
+  @$conexion->set_charset('utf8mb4');
 }
 
-// Helpers
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-function v($k,$d=''){ global $data; return h($data[$k]??$d); }
-function up_or_url($inputName, $fallback=''){
-  // Subir archivo o usar URL (en Render conviene URL)
-  if (!empty($_FILES[$inputName]['name'])) {
-    $dir = __DIR__ . '/../uploads';
-    if (!is_dir($dir)) @mkdir($dir, 0775, true);
-    $fn = time().'_'.preg_replace('/[^a-zA-Z0-9._-]/','_', $_FILES[$inputName]['name']);
-    $dest = $dir.'/'.$fn;
-    if (@move_uploaded_file($_FILES[$inputName]['tmp_name'], $dest)) {
-      return '/uploads/'.$fn;
+// ==================== Helpers ====================
+if (!function_exists('h')) {
+  function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+}
+if (!function_exists('v')) {
+  function v($k,$d=''){ global $data; return h($data[$k]??$d); }
+}
+if (!function_exists('up_or_url')) {
+  function up_or_url($inputName, $fallback=''){
+    if (!empty($_FILES[$inputName]['name'])) {
+      $dir = __DIR__ . '/../uploads';
+      if (!is_dir($dir)) @mkdir($dir, 0775, true);
+      $fn = time().'_'.preg_replace('/[^a-zA-Z0-9._-]/','_', $_FILES[$inputName]['name']);
+      $dest = $dir.'/'.$fn;
+      if (@move_uploaded_file($_FILES[$inputName]['tmp_name'], $dest)) {
+        return '/uploads/'.$fn;
+      }
     }
+    return trim($_POST[$inputName] ?? $fallback);
   }
-  return trim($_POST[$inputName] ?? $fallback);
 }
 
-// Estado
+// ===== Helpers de esquema y ORDER BY tolerante =====
+if (!function_exists('tabla_existe')) {
+  function tabla_existe($cx, $tabla){
+    $rs = @$cx->query("SHOW TABLES LIKE '$tabla'");
+    return $rs && $rs->num_rows>0;
+  }
+}
+if (!function_exists('col_existe')) {
+  function col_existe($cx, $tabla, $col){
+    $rs = @$cx->query("SHOW COLUMNS FROM `$tabla` LIKE '$col'");
+    return $rs && $rs->num_rows>0;
+  }
+}
+if (!function_exists('ensure_table')) {
+  function ensure_table($cx, $tabla, $createSql){
+    if (!tabla_existe($cx,$tabla)) { @ $cx->query($createSql); }
+  }
+}
+if (!function_exists('ensure_col')) {
+  function ensure_col($cx, $tabla, $col, $addSql){
+    if (!col_existe($cx,$tabla,$col)) { @ $cx->query("ALTER TABLE `$tabla` $addSql"); }
+  }
+}
+if (!function_exists('order_by')) {
+  function order_by($cx, $tabla){
+    return col_existe($cx,$tabla,'orden') ? 'orden ASC, id DESC' : 'id DESC';
+  }
+}
+
+// ===== Autofix mínimo de esquema (no rompe si ya existe) =====
+if ($db_ok) {
+  // site_settings
+  ensure_table($conexion,'site_settings',"
+    CREATE TABLE site_settings(
+      id TINYINT PRIMARY KEY,
+      color_principal VARCHAR(7),
+      color_secundario VARCHAR(7),
+      fondo_img VARCHAR(255),
+      logo_img VARCHAR(255),
+      texto_banner VARCHAR(255),
+      youtube VARCHAR(255),
+      instagram VARCHAR(255),
+      facebook VARCHAR(255),
+      google_maps TEXT
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+
+  // disciplinas
+  ensure_table($conexion,'disciplinas',"
+    CREATE TABLE disciplinas(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      imagen_url VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'disciplinas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'disciplinas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // fotos
+  ensure_table($conexion,'fotos',"
+    CREATE TABLE fotos(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150),
+      imagen_url VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'fotos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'fotos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // videos
+  ensure_table($conexion,'videos',"
+    CREATE TABLE videos(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150),
+      video_url VARCHAR(255),
+      tipo VARCHAR(20) DEFAULT 'youtube',
+      cover_url VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'videos','tipo',"ADD COLUMN tipo VARCHAR(20) DEFAULT 'youtube'");
+  ensure_col($conexion,'videos','cover_url',"ADD COLUMN cover_url VARCHAR(255)");
+  ensure_col($conexion,'videos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'videos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // ofertas
+  ensure_table($conexion,'ofertas',"
+    CREATE TABLE ofertas(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      precio DECIMAL(10,2) NOT NULL DEFAULT 0,
+      vigente_desde DATE NULL,
+      vigente_hasta DATE NULL,
+      imagen_url VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'ofertas','precio',"ADD COLUMN precio DECIMAL(10,2) NOT NULL DEFAULT 0");
+  ensure_col($conexion,'ofertas','vigente_desde',"ADD COLUMN vigente_desde DATE NULL");
+  ensure_col($conexion,'ofertas','vigente_hasta',"ADD COLUMN vigente_hasta DATE NULL");
+  ensure_col($conexion,'ofertas','imagen_url',"ADD COLUMN imagen_url VARCHAR(255)");
+  ensure_col($conexion,'ofertas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'ofertas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // promociones
+  ensure_table($conexion,'promociones',"
+    CREATE TABLE promociones(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      imagen_url VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'promociones','imagen_url',"ADD COLUMN imagen_url VARCHAR(255)");
+  ensure_col($conexion,'promociones','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'promociones','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // ventas
+  ensure_table($conexion,'ventas',"
+    CREATE TABLE ventas(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      descripcion TEXT,
+      precio DECIMAL(10,2) NOT NULL DEFAULT 0,
+      imagen_url VARCHAR(255),
+      stock INT NOT NULL DEFAULT 0,
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'ventas','precio',"ADD COLUMN precio DECIMAL(10,2) NOT NULL DEFAULT 0");
+  ensure_col($conexion,'ventas','imagen_url',"ADD COLUMN imagen_url VARCHAR(255)");
+  ensure_col($conexion,'ventas','stock',"ADD COLUMN stock INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'ventas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'ventas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+
+  // equipo
+  ensure_table($conexion,'equipo',"
+    CREATE TABLE equipo(
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      rol VARCHAR(150),
+      bio TEXT,
+      foto_url VARCHAR(255),
+      instagram VARCHAR(255),
+      orden INT NOT NULL DEFAULT 0,
+      activo TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  ");
+  ensure_col($conexion,'equipo','foto_url',"ADD COLUMN foto_url VARCHAR(255)");
+  ensure_col($conexion,'equipo','instagram',"ADD COLUMN instagram VARCHAR(255)");
+  ensure_col($conexion,'equipo','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
+  ensure_col($conexion,'equipo','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
+}
+
+// ==================== Estado ====================
 $data = [];
 $msg_cfg = $msg_disc = $msg_fotos = $msg_videos = $msg_ofe = $msg_promo = $msg_ven = $msg_eq = '';
 
-// ========================= Config básica (site_settings)
+// ==================== Config básica ====================
 if ($db_ok) {
-  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
+  $res  = @$conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
@@ -65,11 +235,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   );
   $ok = $stmt->execute(); $stmt->close();
   $msg_cfg = $ok ? '✅ Configuraciones guardadas' : '❌ Error al guardar';
-  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
+  $res  = @$conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
-// ========================= Disciplinas
+// ==================== Disciplinas ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='disciplinas') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
@@ -87,11 +257,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='d
   }
 }
 if ($db_ok && isset($_GET['del_disc'])) {
-  $conexion->query("DELETE FROM disciplinas WHERE id=".(int)$_GET['del_disc']);
+  @$conexion->query("DELETE FROM disciplinas WHERE id=".(int)$_GET['del_disc']);
   $msg_disc='🗑️ Disciplina eliminada';
 }
 
-// ========================= Fotos
+// ==================== Fotos ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='fotos') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
@@ -108,11 +278,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='f
   }
 }
 if ($db_ok && isset($_GET['del_foto'])) {
-  $conexion->query("DELETE FROM fotos WHERE id=".(int)$_GET['del_foto']);
+  @$conexion->query("DELETE FROM fotos WHERE id=".(int)$_GET['del_foto']);
   $msg_fotos='🗑️ Foto eliminada';
 }
 
-// ========================= Videos
+// ==================== Videos ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $tipo=$_POST['tipo']??'youtube';
@@ -130,11 +300,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
   }
 }
 if ($db_ok && isset($_GET['del_video'])) {
-  $conexion->query("DELETE FROM videos WHERE id=".(int)$_GET['del_video']);
+  @$conexion->query("DELETE FROM videos WHERE id=".(int)$_GET['del_video']);
   $msg_videos='🗑️ Video eliminado';
 }
 
-// ========================= Ofertas (FIX tipos/cantidad)
+// ==================== Ofertas ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ofertas') {
   $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??'';
@@ -153,7 +323,7 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='o
       WHERE id=?
     ");
     // s s d s s s i i i
-    $stmt->bind_param('sssdssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
+    $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
     $ok=$stmt->execute(); $stmt->close();
     $msg_ofe = $ok ? '✅ Oferta actualizada' : '❌ Error al actualizar';
   } else {
@@ -168,13 +338,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='o
   }
 }
 if ($db_ok && isset($_GET['del_ofe'])) {
-  $conexion->query("DELETE FROM ofertas WHERE id=".(int)$_GET['del_ofe']);
+  @$conexion->query("DELETE FROM ofertas WHERE id=".(int)$_GET['del_ofe']);
   $msg_ofe='🗑️ Oferta eliminada';
 }
 
-// ========================= Promociones
+// ==================== Promociones ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
-  $id=(int)($_POST['id']??0);
+  $id=(int)$_POST['id']??0;
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
@@ -190,11 +360,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='p
   }
 }
 if ($db_ok && isset($_GET['del_promo'])) {
-  $conexion->query("DELETE FROM promociones WHERE id=".(int)$_GET['del_promo']);
+  @$conexion->query("DELETE FROM promociones WHERE id=".(int)$_GET['del_promo']);
   $msg_promo='🗑️ Promoción eliminada';
 }
 
-// ========================= Ventas (productos) — FIX
+// ==================== Ventas ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
   $id=(int)($_POST['id']??0);
   $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
@@ -222,11 +392,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
   }
 }
 if ($db_ok && isset($_GET['del_ven'])) {
-  $conexion->query("DELETE FROM ventas WHERE id=".(int)$_GET['del_ven']);
+  @$conexion->query("DELETE FROM ventas WHERE id=".(int)$_GET['del_ven']);
   $msg_ven='🗑️ Producto eliminado';
 }
 
-// ========================= Equipo
+// ==================== Equipo ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='equipo') {
   $id=(int)($_POST['id']??0);
   $nombre=$_POST['nombre']??''; $rol=$_POST['rol']??''; $bio=$_POST['bio']??'';
@@ -244,20 +414,20 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='e
   }
 }
 if ($db_ok && isset($_GET['del_eq'])) {
-  $conexion->query("DELETE FROM equipo WHERE id=".(int)$_GET['del_eq']);
+  @$conexion->query("DELETE FROM equipo WHERE id=".(int)$_GET['del_eq']);
   $msg_eq='🗑️ Miembro eliminado';
 }
 
-// ========================= Listados (últimos 15)
+// ==================== Listados (últimos 15) ====================
 $disciplinas=$fotos=$videos=$ofertas=$promos=$ventas=$equipo=[];
 if ($db_ok) {
-  $r=$conexion->query("SELECT * FROM disciplinas ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $disciplinas[]=$x;
-  $r=$conexion->query("SELECT * FROM fotos       ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $fotos[]=$x;
-  $r=$conexion->query("SELECT * FROM videos      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $videos[]=$x;
-  $r=$conexion->query("SELECT * FROM ofertas     ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ofertas[]=$x;
-  $r=$conexion->query("SELECT * FROM promociones ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $promos[]=$x;
-  $r=$conexion->query("SELECT * FROM ventas      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ventas[]=$x;
-  $r=$conexion->query("SELECT * FROM equipo      ORDER BY orden ASC, id DESC LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $equipo[]=$x;
+  try { $r=$conexion->query("SELECT * FROM disciplinas  ORDER BY ".order_by($conexion,'disciplinas')."  LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $disciplinas[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM fotos        ORDER BY ".order_by($conexion,'fotos')."        LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $fotos[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM videos       ORDER BY ".order_by($conexion,'videos')."       LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $videos[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM ofertas      ORDER BY ".order_by($conexion,'ofertas')."      LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ofertas[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM promociones  ORDER BY ".order_by($conexion,'promociones')."  LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $promos[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM ventas       ORDER BY ".order_by($conexion,'ventas')."       LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ventas[]=$x; } catch(Throwable $e) {}
+  try { $r=$conexion->query("SELECT * FROM equipo       ORDER BY ".order_by($conexion,'equipo')."       LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $equipo[]=$x; } catch(Throwable $e) {}
 }
 ?>
 <!doctype html>
@@ -289,9 +459,7 @@ img.thumb{height:52px;border-radius:8px}
 <div class="wrap">
   <div class="top">
     <h1>Configuraciones del sitio</h1>
-    <div>
-      <a class="link" href="../" target="_blank">Ver sitio</a>
-    </div>
+    <div><a class="link" href="../" target="_blank">Ver sitio</a></div>
   </div>
 
   <?php if(!$db_ok): ?>
