@@ -207,16 +207,33 @@ $data = [];
 $msg_cfg = $msg_disc = $msg_fotos = $msg_videos = $msg_ofe = $msg_promo = $msg_ven = $msg_eq = '';
 
 // ==================== Config básica ====================
+/* =========================
+   Config básica (site_settings)
+========================= */
 if ($db_ok) {
-  $res  = @$conexion->query("SELECT * FROM site_settings WHERE id=1");
+  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
+
+  // 1) Tomar valores en variables (bind_param requiere referencias)
+  $color_principal  = trim($_POST['color_principal'] ?? '');
+  $color_secundario = trim($_POST['color_secundario'] ?? '');
+  $fondo_img        = trim($_POST['fondo_img'] ?? '');
+  $logo_img         = trim($_POST['logo_img'] ?? '');
+  $texto_banner     = trim($_POST['texto_banner'] ?? '');
+  $youtube          = trim($_POST['youtube'] ?? '');
+  $instagram        = trim($_POST['instagram'] ?? '');
+  $facebook         = trim($_POST['facebook'] ?? '');
+  $google_maps      = trim($_POST['google_maps'] ?? '');
+
+  // 2) Insert/Update
   $stmt = $conexion->prepare("
     INSERT INTO site_settings
-    (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps)
-    VALUES(1,?,?,?,?,?,?,?,?,?)
+      (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps)
+    VALUES
+      (1,?,?,?,?,?,?,?,?,?)
     ON DUPLICATE KEY UPDATE
       color_principal=VALUES(color_principal),
       color_secundario=VALUES(color_secundario),
@@ -228,21 +245,28 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       facebook=VALUES(facebook),
       google_maps=VALUES(google_maps)
   ");
-  // >>> 9 tipos para 9 valores
-  $stmt->bind_param('sssssssss',
-    $_POST['color_principal'] ?? '',
-    $_POST['color_secundario'] ?? '',
-    $_POST['fondo_img']       ?? '',
-    $_POST['logo_img']        ?? '',
-    $_POST['texto_banner']    ?? '',
-    $_POST['youtube']         ?? '',
-    $_POST['instagram']       ?? '',
-    $_POST['facebook']        ?? '',
-    $_POST['google_maps']     ?? ''
+
+  // 3) 9 tipos 's' para 9 variables
+  $stmt->bind_param(
+    'sssssssss',
+    $color_principal,
+    $color_secundario,
+    $fondo_img,
+    $logo_img,
+    $texto_banner,
+    $youtube,
+    $instagram,
+    $facebook,
+    $google_maps
   );
-  $ok = $stmt->execute(); $stmt->close();
+
+  $ok = $stmt->execute();
+  $stmt->close();
+
   $msg_cfg = $ok ? '✅ Configuraciones guardadas' : '❌ Error al guardar';
-  $res  = @$conexion->query("SELECT * FROM site_settings WHERE id=1");
+
+  // Recargar valores
+  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
