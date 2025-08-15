@@ -228,10 +228,17 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       facebook=VALUES(facebook),
       google_maps=VALUES(google_maps)
   ");
-  $stmt->bind_param('ssssssssss',
-    $_POST['color_principal'], $_POST['color_secundario'],
-    $_POST['fondo_img'], $_POST['logo_img'], $_POST['texto_banner'],
-    $_POST['youtube'], $_POST['instagram'], $_POST['facebook'], $_POST['google_maps']
+  // >>> 9 tipos para 9 valores
+  $stmt->bind_param('sssssssss',
+    $_POST['color_principal'] ?? '',
+    $_POST['color_secundario'] ?? '',
+    $_POST['fondo_img']       ?? '',
+    $_POST['logo_img']        ?? '',
+    $_POST['texto_banner']    ?? '',
+    $_POST['youtube']         ?? '',
+    $_POST['instagram']       ?? '',
+    $_POST['facebook']        ?? '',
+    $_POST['google_maps']     ?? ''
   );
   $ok = $stmt->execute(); $stmt->close();
   $msg_cfg = $ok ? '✅ Configuraciones guardadas' : '❌ Error al guardar';
@@ -322,7 +329,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='o
       SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
       WHERE id=?
     ");
-    // s s d s s s i i i
     $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
     $ok=$stmt->execute(); $stmt->close();
     $msg_ofe = $ok ? '✅ Oferta actualizada' : '❌ Error al actualizar';
@@ -331,7 +337,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='o
       INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo)
       VALUES (?,?,?,?,?,?,?,?)
     ");
-    // s s d s s s i i
     $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo);
     $ok=$stmt->execute(); $stmt->close();
     $msg_ofe = $ok ? '✅ Oferta guardada' : '❌ Error al guardar';
@@ -344,7 +349,7 @@ if ($db_ok && isset($_GET['del_ofe'])) {
 
 // ==================== Promociones ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
-  $id=(int)$_POST['id']??0;
+  $id=(int)($_POST['id']??0); // <<< fix de precedencia
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
@@ -378,7 +383,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
       SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=?
       WHERE id=?
     ");
-    // s s d s i i i i
     $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id);
     $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto actualizado' : '❌ Error al actualizar';
   } else {
@@ -386,7 +390,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
       INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo)
       VALUES (?,?,?,?,?,?,?)
     ");
-    // s s d s i i i
     $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo);
     $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto guardado' : '❌ Error al guardar';
   }
