@@ -15,6 +15,10 @@ if ($db_ok) {
   @$conexion->set_charset('utf8mb4');
 }
 
+// ======== Cloudinary (desde variables de entorno) ========
+$CLD_NAME   = getenv('CLD_CLOUD_NAME') ?: '';
+$CLD_PRESET = getenv('CLD_UPLOAD_PRESET') ?: '';
+
 // ==================== Helpers ====================
 if (!function_exists('h')) {
   function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
@@ -22,6 +26,7 @@ if (!function_exists('h')) {
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
+// Subir ARCHIVO (mismo nombre para file y texto)
 if (!function_exists('up_or_url')) {
   function up_or_url($inputName, $fallback=''){
     if (!empty($_FILES[$inputName]['name'])) {
@@ -223,17 +228,12 @@ $data = [];
 $msg_cfg = $msg_disc = $msg_fotos = $msg_videos = $msg_ofe = $msg_promo = $msg_ven = $msg_eq = '';
 
 // ==================== Config básica ====================
-/* =========================
-   Config básica (site_settings)
-========================= */
 if ($db_ok) {
   $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
-
-  // 1) Tomar valores en variables (bind_param requiere referencias)
   $color_principal  = trim($_POST['color_principal'] ?? '');
   $color_secundario = trim($_POST['color_secundario'] ?? '');
   $fondo_img        = trim($_POST['fondo_img'] ?? '');
@@ -244,7 +244,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   $facebook         = trim($_POST['facebook'] ?? '');
   $google_maps      = trim($_POST['google_maps'] ?? '');
 
-  // 2) Insert/Update
   $stmt = $conexion->prepare("
     INSERT INTO site_settings
       (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps)
@@ -261,27 +260,14 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       facebook=VALUES(facebook),
       google_maps=VALUES(google_maps)
   ");
-
-  // 3) 9 tipos 's' para 9 variables
-  $stmt->bind_param(
-    'sssssssss',
-    $color_principal,
-    $color_secundario,
-    $fondo_img,
-    $logo_img,
-    $texto_banner,
-    $youtube,
-    $instagram,
-    $facebook,
-    $google_maps
+  $stmt->bind_param('sssssssss',
+    $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
+    $youtube,$instagram,$facebook,$google_maps
   );
-
-  $ok = $stmt->execute();
-  $stmt->close();
+  $ok = $stmt->execute(); $stmt->close();
 
   $msg_cfg = $ok ? '✅ Configuraciones guardadas' : '❌ Error al guardar';
 
-  // Recargar valores
   $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
@@ -334,7 +320,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
   $id     =(int)($_POST['id']??0);
   $titulo = $_POST['titulo']??'';
   $tipo   = $_POST['tipo']??'youtube';
-  // archivo de video o URL
   $video  = up_or_url2('video_file','video_url', $_POST['video_url']??'');
   $cover  = up_or_url('cover_url', $_POST['cover_url']??'');
   $orden  = (int)($_POST['orden']??0);
@@ -494,12 +479,14 @@ label{font-weight:600}
 input,textarea,select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:#fff}
 textarea{min-height:90px}
 .btn{background:#22c55e;border:0;color:#000;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
+.btn[disabled]{opacity:.6;cursor:not-allowed}
 .msg{margin:12px 0;padding:10px;border-radius:8px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
 .warn{margin:12px 0;padding:10px;border-radius:8px;background:rgba(255,193,7,.15);border:1px solid rgba(255,193,7,.35)}
 table{width:100%;border-collapse:collapse}
 th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.12);vertical-align:top}
 img.thumb{height:52px;border-radius:8px}
 .badge{font-size:.85rem;opacity:.85}
+.inline{display:flex;gap:8px;align-items:center}
 </style>
 </head>
 <body>
@@ -553,8 +540,15 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Título</label><input type="text" name="titulo" required></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="disc-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-disc-img">Subir a la nube</button>
+          </div>
+          <img id="disc-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
       <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar disciplina</button></div>
@@ -587,8 +581,15 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo"></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="foto-url" placeholder="https://...">
+            <button type="button" class="btn" id="cld-foto-btn">Subir a la nube</button>
+          </div>
+          <img id="foto-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
       <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar foto</button></div>
@@ -633,16 +634,31 @@ img.thumb{height:52px;border-radius:8px}
         <div>
           <label>Video (subir)</label>
           <input type="file" name="video_file" accept="video/*">
-          <div class="badge">Podés subir MP4/MOV/WEBM (no persiste en plan free de Render)</div>
+          <div class="badge">En plan free de Render los archivos locales no persisten.</div>
         </div>
 
         <div>
           <label>Video URL</label>
-          <input type="url" name="video_url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4">
+          <div class="inline">
+            <input type="url" name="video_url" id="video-url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4">
+            <button type="button" class="btn" id="cld-video-btn">Subir a la nube</button>
+          </div>
+          <div id="video-hint" class="badge"></div>
         </div>
 
-        <div><label>Cover (subir)</label><input type="file" name="cover_url" accept="image/*"></div>
-        <div><label>Cover (URL)</label><input type="url" name="cover_url" placeholder="https://..."></div>
+        <div>
+          <label>Cover (subir)</label>
+          <input type="file" name="cover_url" accept="image/*">
+        </div>
+        <div>
+          <label>Cover (URL)</label>
+          <div class="inline">
+            <input type="url" name="cover_url" id="cover-url" placeholder="https://...">
+            <button type="button" class="btn" id="cld-cover-btn">Subir cover</button>
+          </div>
+          <img id="cover-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
@@ -681,8 +697,15 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Vigente desde</label><input type="date" name="vigente_desde"></div>
         <div><label>Vigente hasta</label><input type="date" name="vigente_hasta"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="ofe-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-ofe-img">Subir a la nube</button>
+          </div>
+          <img id="ofe-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
@@ -719,8 +742,15 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo" required></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="promo-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-promo-img">Subir a la nube</button>
+          </div>
+          <img id="promo-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
@@ -756,8 +786,15 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
         <div><label>Stock</label><input type="number" name="stock" value="0"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Imagen (URL)</label><input type="text" name="imagen_url" placeholder="https://..."></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="ven-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-ven-img">Subir a la nube</button>
+          </div>
+          <img id="ven-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
@@ -794,8 +831,15 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Nombre</label><input type="text" name="nombre" required></div>
         <div><label>Rol</label><input type="text" name="rol"></div>
         <div class="grid-1"><label>Bio</label><textarea name="bio"></textarea></div>
-        <div><label>Foto (subir)</label><input type="file" name="foto_url" accept="image/*"><div class="badge">Mejor usar URL en Render</div></div>
-        <div><label>Foto (URL)</label><input type="text" name="foto_url" placeholder="https://..."></div>
+        <div><label>Foto (subir)</label><input type="file" name="foto_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Foto (URL)</label>
+          <div class="inline">
+            <input type="text" name="foto_url" id="eq-foto-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-eq-foto">Subir a la nube</button>
+          </div>
+          <img id="eq-foto-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
         <div><label>Instagram (URL)</label><input type="url" name="instagram" placeholder="https://instagram.com/..."></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
@@ -823,5 +867,67 @@ img.thumb{height:52px;border-radius:8px}
   </div>
 
 </div>
+
+<!-- Cloudinary widget -->
+<script src="https://upload-widget.cloudinary.com/latest/global/all.js" type="text/javascript"></script>
+<script>
+(function(){
+  const CLD_NAME   = "<?=h($CLD_NAME)?>";
+  const CLD_PRESET = "<?=h($CLD_PRESET)?>";
+
+  function canUseCloudinary(){ return !!(window.cloudinary && CLD_NAME && CLD_PRESET); }
+
+  function attachUploader(btnId, inputId, type, prevId){
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    const prev = prevId ? document.getElementById(prevId) : null;
+    if (!btn || !input) return;
+
+    if (!canUseCloudinary()){
+      btn.disabled = true;
+      btn.title = "Configura CLD_CLOUD_NAME y CLD_UPLOAD_PRESET en Render para habilitar";
+      return;
+    }
+    const w = cloudinary.createUploadWidget({
+      cloudName: CLD_NAME,
+      uploadPreset: CLD_PRESET,
+      sources: ['local','url','camera'],
+      folder: 'scorpions',
+      multiple: false,
+      maxFileSize: (type==='video' ? 50 : 10) * 1024 * 1024, // 50MB video, 10MB imagen
+      clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
+      resourceType: type
+    }, (error, result) => {
+      if (!error && result && result.event === "success") {
+        input.value = result.info.secure_url;
+        if (prev){
+          prev.src = result.info.secure_url;
+          prev.style.display = 'inline-block';
+        }
+        const hint = document.getElementById('video-hint');
+        if (hint && type==='video') {
+          hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
+        }
+      }
+    });
+
+    btn.addEventListener('click', (e) => { e.preventDefault(); w.open(); });
+  }
+
+  // Fotos
+  attachUploader('cld-foto-btn','foto-url','image','foto-prev');
+
+  // Disciplinas / Ofertas / Promos / Ventas / Equipo (imágenes)
+  attachUploader('btn-disc-img','disc-img-url','image','disc-img-prev');
+  attachUploader('btn-ofe-img','ofe-img-url','image','ofe-img-prev');
+  attachUploader('btn-promo-img','promo-img-url','image','promo-img-prev');
+  attachUploader('btn-ven-img','ven-img-url','image','ven-img-prev');
+  attachUploader('btn-eq-foto','eq-foto-url','image','eq-foto-prev');
+
+  // Videos: archivo remoto y cover
+  attachUploader('cld-video-btn','video-url','video',null);
+  attachUploader('cld-cover-btn','cover-url','image','cover-prev');
+})();
+</script>
 </body>
 </html>
