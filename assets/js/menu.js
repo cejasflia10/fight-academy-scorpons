@@ -31,6 +31,14 @@
         btn.setAttribute('aria-expanded', 'false');
       }
     });
+
+    // Al cambiar tamaño (mobile -> desktop), aseguremos estado limpio
+    window.addEventListener('resize', () => {
+      if (!isMobile()) {
+        panel.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
   }
 
   /* 2) Submenú "Ingresos" (desktop + mobile) */
@@ -49,6 +57,14 @@
       tgl.addEventListener('click', (e) => {
         e.preventDefault();
         setOpen(!wrapper.classList.contains('open'));
+      });
+
+      // Accesibilidad: abrir con Enter/Espacio
+      tgl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setOpen(!wrapper.classList.contains('open'));
+        }
       });
     }
 
@@ -74,16 +90,21 @@
     if (!link) {
       link = document.createElement('a');
       link.id = 'ing-config';
+      link.textContent = 'Configuraciones';
       link.target = '_blank';
       link.rel = 'noopener';
-      link.textContent = 'Configuraciones';
       submenu.appendChild(link);
     }
 
+    // Permite override manual desde HTML: <a id="ing-config" data-url="https://...">
+    const dataUrl = link.getAttribute('data-url');
+
+    // Detectar local vs no-local (prod o dominio propio)
     const host = (location.hostname || '').toLowerCase();
-    const isProd = host.includes('onrender.com');
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
     const prodUrl = 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
-    link.href = isProd ? prodUrl : '/admin/configuraciones.php';
+
+    link.href = dataUrl || (isLocal ? '/admin/configuraciones.php' : prodUrl);
   })();
 
   /* 4) Marcar link activo en el nav */
@@ -94,7 +115,7 @@
         const hrefPath = new URL(a.getAttribute('href'), location.origin).pathname
           .replace(/\/+$/, '') || '/';
         if (hrefPath === current) a.classList.add('active');
-      } catch {}
+      } catch { /* ignore */ }
     });
   })();
 })();

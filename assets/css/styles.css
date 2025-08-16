@@ -289,3 +289,9 @@ h1{font-weight:800; line-height:1.1; font-size:clamp(1.6rem, 2.5vw + 1rem, 3rem)
 
 /* Footer */
 footer{border-top:1px solid var(--ring); padding:1rem; text-align:center; color:var(--muted)}
+.nav-links .nav-link.active {
+  color: #22c55e;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

@@ -36,6 +36,22 @@ if (!function_exists('up_or_url')) {
     return trim($_POST[$inputName] ?? $fallback);
   }
 }
+// Subir ARCHIVO (campo de archivo) o tomar URL (otro campo)
+if (!function_exists('up_or_url2')) {
+  function up_or_url2($fileField, $urlField, $fallback=''){
+    if (!empty($_FILES[$fileField]['name'])) {
+      $dir = __DIR__ . '/../uploads';
+      if (!is_dir($dir)) @mkdir($dir, 0775, true);
+      $ext = pathinfo($_FILES[$fileField]['name'], PATHINFO_EXTENSION);
+      $fn  = time().'_'.mt_rand(100000,999999).($ext?'.'.$ext:'');
+      $dest = $dir.'/'.$fn;
+      if (@move_uploaded_file($_FILES[$fileField]['tmp_name'], $dest)) {
+        return '/uploads/'.$fn;
+      }
+    }
+    return trim($_POST[$urlField] ?? $fallback);
+  }
+}
 
 // ===== Helpers de esquema y ORDER BY tolerante =====
 if (!function_exists('tabla_existe')) {
@@ -315,10 +331,14 @@ if ($db_ok && isset($_GET['del_foto'])) {
 
 // ==================== Videos ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
-  $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??''; $tipo=$_POST['tipo']??'youtube';
-  $video=$_POST['video_url']??''; $cover=up_or_url('cover_url', $_POST['cover_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+  $id     =(int)($_POST['id']??0);
+  $titulo = $_POST['titulo']??'';
+  $tipo   = $_POST['tipo']??'youtube';
+  // archivo de video o URL
+  $video  = up_or_url2('video_file','video_url', $_POST['video_url']??'');
+  $cover  = up_or_url('cover_url', $_POST['cover_url']??'');
+  $orden  = (int)($_POST['orden']??0);
+  $activo = isset($_POST['activo'])?1:0;
 
   if ($id>0){
     $stmt=$conexion->prepare("UPDATE videos SET titulo=?, video_url=?, tipo=?, cover_url=?, orden=?, activo=? WHERE id=?");
@@ -373,7 +393,7 @@ if ($db_ok && isset($_GET['del_ofe'])) {
 
 // ==================== Promociones ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
-  $id=(int)($_POST['id']??0); // <<< fix de precedencia
+  $id=(int)($_POST['id']??0);
   $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
@@ -600,16 +620,29 @@ img.thumb{height:52px;border-radius:8px}
       <input type="hidden" name="__form" value="videos"><input type="hidden" name="id" value="0">
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo"></div>
-        <div><label>Tipo</label>
+
+        <div>
+          <label>Tipo</label>
           <select name="tipo">
             <option value="youtube">YouTube</option>
             <option value="instagram">Instagram</option>
-            <option value="mp4">MP4 (link directo)</option>
+            <option value="mp4">MP4 (archivo o link)</option>
           </select>
         </div>
-        <div><label>Video URL</label><input type="text" name="video_url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4" required></div>
+
+        <div>
+          <label>Video (subir)</label>
+          <input type="file" name="video_file" accept="video/*">
+          <div class="badge">Podés subir MP4/MOV/WEBM (no persiste en plan free de Render)</div>
+        </div>
+
+        <div>
+          <label>Video URL</label>
+          <input type="url" name="video_url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4">
+        </div>
+
         <div><label>Cover (subir)</label><input type="file" name="cover_url" accept="image/*"></div>
-        <div><label>Cover (URL)</label><input type="text" name="cover_url" placeholder="https://..."></div>
+        <div><label>Cover (URL)</label><input type="url" name="cover_url" placeholder="https://..."></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
       </div>
