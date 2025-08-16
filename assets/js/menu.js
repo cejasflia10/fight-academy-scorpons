@@ -1,85 +1,100 @@
 // assets/js/menu.js
-(function(){
-  const menu = document.querySelector('nav .menu');
-  const toggle = menu?.querySelector('.toggle');
-  if (!menu || !toggle) return;
+(() => {
+  // Helpers
+  const $ = (sel, el=document) => el.querySelector(sel);
+  const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+  const isMobile = () => window.matchMedia('(max-width: 767.98px)').matches;
 
-  toggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    menu.classList.toggle('open');
-  });
-
-  document.addEventListener('click', () => menu.classList.remove('open'));
-})();
-// Garantizar que el ítem "Configuraciones" existe
-(function(){
-  const menu = document.querySelector('nav .menu');
-  if (!menu) return;
-  const box = menu.querySelector('.submenu');
-  if (!box) return;
-  if (!box.querySelector('#ing-config')) {
-    const a = document.createElement('a');
-    a.id = 'ing-config';
-    a.href = '/admin/configuraciones.php';
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = 'Configuraciones';
-    box.appendChild(a);
-  }
-
-  // Toggle por click (móvil)
-  const toggle = menu.querySelector('.toggle');
-  if (toggle) {
-    toggle.addEventListener('click', (e) => {
-      e.preventDefault(); e.stopPropagation();
-      menu.classList.toggle('open');
+  /* 1) Menú hamburguesa (mobile) */
+  const btn = $('.nav-toggle');
+  const panel = $('#nav-links');
+  if (btn && panel) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const open = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(open));
     });
-    document.addEventListener('click', () => menu.classList.remove('open'));
+
+    // Cerrar al tocar un link en mobile
+    panel.addEventListener('click', (e) => {
+      const a = e.target.closest('a');
+      if (a && isMobile()) {
+        panel.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Cerrar con ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        panel.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
   }
-})();
-// Menú hamburguesa
-(() => {
-  const btn = document.querySelector('.nav-toggle');
-  const panel = document.getElementById('nav-links');
-  if (!btn || !panel) return;
 
-  btn.addEventListener('click', () => {
-    const isOpen = panel.classList.toggle('open');
-    btn.setAttribute('aria-expanded', String(isOpen));
-  });
+  /* 2) Submenú "Ingresos" (desktop + mobile) */
+  const wrapper = $('#menu-ingresos');
+  if (wrapper) {
+    const tgl = $('.toggle', wrapper);
+    const submenu = $('.submenu', wrapper);
 
-  // Cerrar al tocar un link en mobile
-  panel.addEventListener('click', (e) => {
-    const a = e.target.closest('a');
-    if (a && window.innerWidth < 768) {
-      panel.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
+    const setOpen = (open) => {
+      wrapper.classList.toggle('open', open);
+      if (tgl) tgl.setAttribute('aria-expanded', String(open));
+      if (submenu) submenu.hidden = !open;
+    };
+
+    if (tgl) {
+      tgl.addEventListener('click', (e) => {
+        e.preventDefault();
+        setOpen(!wrapper.classList.contains('open'));
+      });
     }
-  });
-})();
 
-// Submenú "Ingresos"
-(() => {
-  const wrapper = document.getElementById('menu-ingresos');
-  if (!wrapper) return;
-  const toggle = wrapper.querySelector('.toggle');
-  const submenu = wrapper.querySelector('.submenu');
+    // Cerrar al click fuera (solo desktop)
+    document.addEventListener('click', (e) => {
+      if (!isMobile() && wrapper.classList.contains('open') && !wrapper.contains(e.target)) {
+        setOpen(false);
+      }
+    });
 
-  const setOpen = (open) => {
-    wrapper.classList.toggle('open', open);
-    toggle.setAttribute('aria-expanded', String(open));
-    if (submenu) submenu.hidden = !open;
-  };
+    // Cerrar con ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  }
 
-  toggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    setOpen(!wrapper.classList.contains('open'));
-  });
+  /* 3) Link "Configuraciones": asegurar presencia y URL correcta */
+  (function ensureConfigLink(){
+    const submenu = $('#menu-ingresos .submenu');
+    if (!submenu) return;
 
-  // Cerrar al click fuera en desktop
-  document.addEventListener('click', (e) => {
-    if (window.innerWidth < 768) return;
-    if (!wrapper.contains(e.target)) setOpen(false);
-  });
+    let link = $('#ing-config', submenu);
+    if (!link) {
+      link = document.createElement('a');
+      link.id = 'ing-config';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Configuraciones';
+      submenu.appendChild(link);
+    }
+
+    const host = (location.hostname || '').toLowerCase();
+    const isProd = host.includes('onrender.com');
+    const prodUrl = 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
+    link.href = isProd ? prodUrl : '/admin/configuraciones.php';
+  })();
+
+  /* 4) Marcar link activo en el nav */
+  (function highlightActive(){
+    const current = location.pathname.replace(/\/+$/, '') || '/';
+    $$('.nav-links .nav-link').forEach(a => {
+      try {
+        const hrefPath = new URL(a.getAttribute('href'), location.origin).pathname
+          .replace(/\/+$/, '') || '/';
+        if (hrefPath === current) a.classList.add('active');
+      } catch {}
+    });
+  })();
 })();
