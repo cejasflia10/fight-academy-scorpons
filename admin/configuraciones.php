@@ -400,7 +400,7 @@ if ($db_ok && isset($_GET['del_promo'])) {
 
 // ==================== Ventas ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
-  $id=(int)($_POST['id']??0);
+  $id=(int)$_POST['id']??0;
   $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
   $precio=(float)($_POST['precio']??0); $stock=(int)($_POST['stock']??0);
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
@@ -498,6 +498,9 @@ img.thumb{height:52px;border-radius:8px}
 
   <?php if(!$db_ok): ?>
     <div class="warn">⚠️ Sin conexión a la base de datos. Podés navegar el panel, pero no se guardará hasta que la DB responda.</div>
+  <?php endif; ?>
+  <?php if(!$CLD_NAME || !$CLD_PRESET): ?>
+    <div class="warn">ℹ️ Para habilitar <b>Subir a la nube</b> agregá <code>CLD_CLOUD_NAME</code> y <code>CLD_UPLOAD_PRESET</code> en Render &rarr; Environment.</div>
   <?php endif; ?>
 
   <?php if($msg_cfg): ?><div class="msg"><?=h($msg_cfg)?></div><?php endif; ?>
@@ -869,7 +872,7 @@ img.thumb{height:52px;border-radius:8px}
 </div>
 
 <!-- Cloudinary widget -->
-<script src="https://upload-widget.cloudinary.com/latest/global/all.js" type="text/javascript"></script>
+<script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
 <script>
 (function(){
   const CLD_NAME   = "<?=h($CLD_NAME)?>";
@@ -891,10 +894,10 @@ img.thumb{height:52px;border-radius:8px}
     const w = cloudinary.createUploadWidget({
       cloudName: CLD_NAME,
       uploadPreset: CLD_PRESET,
-      sources: ['local','url','camera'],
+      sources: ['local','url','camera','google_drive'],
       folder: 'scorpions',
       multiple: false,
-      maxFileSize: (type==='video' ? 50 : 10) * 1024 * 1024, // 50MB video, 10MB imagen
+      maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024, // 100MB video, 15MB imagen
       clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
       resourceType: type
     }, (error, result) => {
@@ -904,9 +907,14 @@ img.thumb{height:52px;border-radius:8px}
           prev.src = result.info.secure_url;
           prev.style.display = 'inline-block';
         }
-        const hint = document.getElementById('video-hint');
-        if (hint && type==='video') {
-          hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
+        if (type==='video'){
+          // Cambiar automáticamente el tipo a mp4 si subimos un archivo
+          const formHidden = document.querySelector('form input[name="__form"][value="videos"]');
+          const form = formHidden ? formHidden.form : null;
+          const tipoSel = form ? form.querySelector('select[name="tipo"]') : null;
+          if (tipoSel) tipoSel.value = 'mp4';
+          const hint = document.getElementById('video-hint');
+          if (hint) hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
         }
       }
     });
