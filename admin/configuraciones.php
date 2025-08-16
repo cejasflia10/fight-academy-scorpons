@@ -1,7 +1,5 @@
 <?php
 // admin/configuraciones.php — Panel Único (SIN LOGIN)
-
-// Debug (podés apagar en prod)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -11,13 +9,9 @@ require __DIR__ . '/../conexion.php';
 // Estado de conexión
 $db_ok = isset($conexion) && $conexion instanceof mysqli;
 if ($db_ok) {
-  if (function_exists('mysqli_report')) { mysqli_report(MYSQLI_REPORT_OFF); } // evita fatales por mysql
+  if (function_exists('mysqli_report')) { mysqli_report(MYSQLI_REPORT_OFF); }
   @$conexion->set_charset('utf8mb4');
 }
-
-// ======== Cloudinary (desde variables de entorno) ========
-$CLD_NAME   = getenv('CLD_CLOUD_NAME') ?: '';
-$CLD_PRESET = getenv('CLD_UPLOAD_PRESET') ?: '';
 
 // ==================== Helpers ====================
 if (!function_exists('h')) {
@@ -41,7 +35,7 @@ if (!function_exists('up_or_url')) {
     return trim($_POST[$inputName] ?? $fallback);
   }
 }
-// Subir ARCHIVO (campo de archivo) o tomar URL (otro campo)
+// Subir ARCHIVO (campo archivo distinto de campo URL)
 if (!function_exists('up_or_url2')) {
   function up_or_url2($fileField, $urlField, $fallback=''){
     if (!empty($_FILES[$fileField]['name'])) {
@@ -49,6 +43,7 @@ if (!function_exists('up_or_url2')) {
       if (!is_dir($dir)) @mkdir($dir, 0775, true);
       $ext = pathinfo($_FILES[$fileField]['name'], PATHINFO_EXTENSION);
       $fn  = time().'_'.mt_rand(100000,999999).($ext?'.'.$ext:'');
+
       $dest = $dir.'/'.$fn;
       if (@move_uploaded_file($_FILES[$fileField]['tmp_name'], $dest)) {
         return '/uploads/'.$fn;
@@ -87,7 +82,7 @@ if (!function_exists('order_by')) {
   }
 }
 
-// ===== Autofix mínimo de esquema (no rompe si ya existe) =====
+// ===== Autofix mínimo de esquema =====
 if ($db_ok) {
   // site_settings
   ensure_table($conexion,'site_settings',"
@@ -101,9 +96,14 @@ if ($db_ok) {
       youtube VARCHAR(255),
       instagram VARCHAR(255),
       facebook VARCHAR(255),
-      google_maps TEXT
+      google_maps TEXT,
+      cld_cloud_name VARCHAR(100),
+      cld_upload_preset VARCHAR(120)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'site_settings','cld_cloud_name',"ADD COLUMN cld_cloud_name VARCHAR(100)");
+  ensure_col($conexion,'site_settings','cld_upload_preset',"ADD COLUMN cld_upload_preset VARCHAR(120)");
+  @$conexion->query("INSERT IGNORE INTO site_settings (id) VALUES (1)");
 
   // disciplinas
   ensure_table($conexion,'disciplinas',"
@@ -233,6 +233,10 @@ if ($db_ok) {
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
+// Cloudinary: primero intentar variables de entorno, si no, tomar de DB
+$CLD_NAME   = getenv('CLD_CLOUD_NAME')     ?: ($data['cld_cloud_name'] ?? '');
+$CLD_PRESET = getenv('CLD_UPLOAD_PRESET')  ?: ($data['cld_upload_preset'] ?? '');
+
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
   $color_principal  = trim($_POST['color_principal'] ?? '');
   $color_secundario = trim($_POST['color_secundario'] ?? '');
@@ -243,12 +247,14 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   $instagram        = trim($_POST['instagram'] ?? '');
   $facebook         = trim($_POST['facebook'] ?? '');
   $google_maps      = trim($_POST['google_maps'] ?? '');
+  $cld_cloud_name   = trim($_POST['cld_cloud_name'] ?? '');
+  $cld_upload_preset= trim($_POST['cld_upload_preset'] ?? '');
 
   $stmt = $conexion->prepare("
     INSERT INTO site_settings
-      (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps)
+      (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps,cld_cloud_name,cld_upload_preset)
     VALUES
-      (1,?,?,?,?,?,?,?,?,?)
+      (1,?,?,?,?,?,?,?,?,?,?,?)
     ON DUPLICATE KEY UPDATE
       color_principal=VALUES(color_principal),
       color_secundario=VALUES(color_secundario),
@@ -258,11 +264,14 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       youtube=VALUES(youtube),
       instagram=VALUES(instagram),
       facebook=VALUES(facebook),
-      google_maps=VALUES(google_maps)
+      google_maps=VALUES(google_maps),
+      cld_cloud_name=VALUES(cld_cloud_name),
+      cld_upload_preset=VALUES(cld_upload_preset)
   ");
-  $stmt->bind_param('sssssssss',
+  $stmt->bind_param(
+    'ssssssssssss',
     $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
-    $youtube,$instagram,$facebook,$google_maps
+    $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
   );
   $ok = $stmt->execute(); $stmt->close();
 
@@ -270,6 +279,10 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
 
   $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
+
+  // refrescar vars para el JS
+  $CLD_NAME   = getenv('CLD_CLOUD_NAME')    ?: ($data['cld_cloud_name'] ?? '');
+  $CLD_PRESET = getenv('CLD_UPLOAD_PRESET') ?: ($data['cld_upload_preset'] ?? '');
 }
 
 // ==================== Disciplinas ====================
@@ -400,7 +413,7 @@ if ($db_ok && isset($_GET['del_promo'])) {
 
 // ==================== Ventas ====================
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
-  $id=(int)$_POST['id']??0;
+  $id=(int)($_POST['id']??0);
   $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
   $precio=(float)($_POST['precio']??0); $stock=(int)($_POST['stock']??0);
   $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
@@ -487,6 +500,7 @@ th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.12);vertical-align:t
 img.thumb{height:52px;border-radius:8px}
 .badge{font-size:.85rem;opacity:.85}
 .inline{display:flex;gap:8px;align-items:center}
+.small{font-size:.9rem;opacity:.85}
 </style>
 </head>
 <body>
@@ -498,9 +512,6 @@ img.thumb{height:52px;border-radius:8px}
 
   <?php if(!$db_ok): ?>
     <div class="warn">⚠️ Sin conexión a la base de datos. Podés navegar el panel, pero no se guardará hasta que la DB responda.</div>
-  <?php endif; ?>
-  <?php if(!$CLD_NAME || !$CLD_PRESET): ?>
-    <div class="warn">ℹ️ Para habilitar <b>Subir a la nube</b> agregá <code>CLD_CLOUD_NAME</code> y <code>CLD_UPLOAD_PRESET</code> en Render &rarr; Environment.</div>
   <?php endif; ?>
 
   <?php if($msg_cfg): ?><div class="msg"><?=h($msg_cfg)?></div><?php endif; ?>
@@ -530,7 +541,20 @@ img.thumb{height:52px;border-radius:8px}
       <div><label>Facebook</label><input type="url" name="facebook" value="<?=v('facebook')?>"></div>
       <div class="grid-1"><label>Google Maps (embed URL)</label><textarea name="google_maps"><?=v('google_maps')?></textarea></div>
     </div>
-    <div style="margin-top:16px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar configuraciones</button></div>
+
+    <h2 style="margin:20px 0 6px">Cloudinary (para subir a la nube)</h2>
+    <div class="small" style="margin-bottom:10px">
+      Completá estos datos (o definilos como variables de entorno <code>CLD_CLOUD_NAME</code> y <code>CLD_UPLOAD_PRESET</code> en Render).
+      Con esto se habilitan los botones “Subir a la nube”.
+    </div>
+    <div class="grid">
+      <div><label>Cloud name</label><input type="text" name="cld_cloud_name" value="<?=v('cld_cloud_name')?>"></div>
+      <div><label>Upload preset (unsigned)</label><input type="text" name="cld_upload_preset" value="<?=v('cld_upload_preset')?>"></div>
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar configuraciones</button>
+    </div>
   </form>
 
   <!-- ==================== DISCIPLINAS ==================== -->
@@ -637,7 +661,7 @@ img.thumb{height:52px;border-radius:8px}
         <div>
           <label>Video (subir)</label>
           <input type="file" name="video_file" accept="video/*">
-          <div class="badge">En plan free de Render los archivos locales no persisten.</div>
+          <div class="badge">En Render free, los archivos locales no persisten.</div>
         </div>
 
         <div>
@@ -868,15 +892,15 @@ img.thumb{height:52px;border-radius:8px}
       </tbody>
     </table>
   </div>
-
 </div>
 
 <!-- Cloudinary widget -->
-<script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+<script src="https://upload-widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
 <script>
 (function(){
-  const CLD_NAME   = "<?=h($CLD_NAME)?>";
-  const CLD_PRESET = "<?=h($CLD_PRESET)?>";
+  // Tomar credenciales desde PHP (env o DB)
+  const CLD_NAME   = <?= json_encode($CLD_NAME) ?>;
+  const CLD_PRESET = <?= json_encode($CLD_PRESET) ?>;
 
   function canUseCloudinary(){ return !!(window.cloudinary && CLD_NAME && CLD_PRESET); }
 
@@ -888,13 +912,13 @@ img.thumb{height:52px;border-radius:8px}
 
     if (!canUseCloudinary()){
       btn.disabled = true;
-      btn.title = "Configura CLD_CLOUD_NAME y CLD_UPLOAD_PRESET en Render para habilitar";
+      btn.title = "Completá Cloud name y Upload preset en Configuraciones para habilitar";
       return;
     }
     const w = cloudinary.createUploadWidget({
       cloudName: CLD_NAME,
       uploadPreset: CLD_PRESET,
-      sources: ['local','url','camera','google_drive'],
+      sources: ['local','url','camera'],
       folder: 'scorpions',
       multiple: false,
       maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024, // 100MB video, 15MB imagen
@@ -907,14 +931,9 @@ img.thumb{height:52px;border-radius:8px}
           prev.src = result.info.secure_url;
           prev.style.display = 'inline-block';
         }
-        if (type==='video'){
-          // Cambiar automáticamente el tipo a mp4 si subimos un archivo
-          const formHidden = document.querySelector('form input[name="__form"][value="videos"]');
-          const form = formHidden ? formHidden.form : null;
-          const tipoSel = form ? form.querySelector('select[name="tipo"]') : null;
-          if (tipoSel) tipoSel.value = 'mp4';
-          const hint = document.getElementById('video-hint');
-          if (hint) hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
+        const hint = document.getElementById('video-hint');
+        if (hint && type==='video') {
+          hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
         }
       }
     });
