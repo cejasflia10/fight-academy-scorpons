@@ -20,6 +20,15 @@ if (!function_exists('h')) {
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
+// Helper ENV (toma getenv, $_ENV o $_SERVER)
+if (!function_exists('envv')) {
+  function envv($k, $d='') {
+    $v = getenv($k);
+    if ($v === false || $v === '') { $v = $_ENV[$k] ?? ($_SERVER[$k] ?? ''); }
+    return $v !== '' ? $v : $d;
+  }
+}
+
 // Subir ARCHIVO (mismo nombre para file y texto)
 if (!function_exists('up_or_url')) {
   function up_or_url($inputName, $fallback=''){
@@ -43,7 +52,6 @@ if (!function_exists('up_or_url2')) {
       if (!is_dir($dir)) @mkdir($dir, 0775, true);
       $ext = pathinfo($_FILES[$fileField]['name'], PATHINFO_EXTENSION);
       $fn  = time().'_'.mt_rand(100000,999999).($ext?'.'.$ext:'');
-
       $dest = $dir.'/'.$fn;
       if (@move_uploaded_file($_FILES[$fileField]['tmp_name'], $dest)) {
         return '/uploads/'.$fn;
@@ -129,6 +137,7 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'fotos','titulo',"ADD COLUMN titulo VARCHAR(150) NULL AFTER id");
   ensure_col($conexion,'fotos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'fotos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
@@ -233,10 +242,10 @@ if ($db_ok) {
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
-// Cloudinary: usar nombres de Render y compatibilidad con CLD_*
-$CLD_NAME   = getenv('CLOUDINARY_CLOUD_NAME')     ?: getenv('CLD_CLOUD_NAME')      ?: ($data['cld_cloud_name'] ?? '');
-$CLD_PRESET = getenv('CLOUDINARY_UNSIGNED_PRESET')?: getenv('CLD_UPLOAD_PRESET')   ?: ($data['cld_upload_preset'] ?? '');
-$CLD_FOLDER = getenv('CLOUDINARY_FOLDER')         ?: 'scorpions';
+// Cloudinary: usar ENV (CLOUDINARY_* o CLD_*) o DB
+$CLD_NAME   = envv('CLOUDINARY_CLOUD_NAME',    envv('CLD_CLOUD_NAME',     $data['cld_cloud_name']    ?? ''));
+$CLD_PRESET = envv('CLOUDINARY_UNSIGNED_PRESET', envv('CLD_UPLOAD_PRESET',  $data['cld_upload_preset'] ?? ''));
+$CLD_FOLDER = envv('CLOUDINARY_FOLDER', 'scorpions');
 
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
   $color_principal  = trim($_POST['color_principal'] ?? '');
@@ -269,7 +278,6 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       cld_cloud_name=VALUES(cld_cloud_name),
       cld_upload_preset=VALUES(cld_upload_preset)
   ");
-  // 11 valores -> 11 's'
   $stmt->bind_param(
     'sssssssssss',
     $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
@@ -283,9 +291,9 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 
   // refrescar vars para el JS
-  $CLD_NAME   = getenv('CLOUDINARY_CLOUD_NAME')     ?: getenv('CLD_CLOUD_NAME')      ?: ($data['cld_cloud_name'] ?? '');
-  $CLD_PRESET = getenv('CLOUDINARY_UNSIGNED_PRESET')?: getenv('CLD_UPLOAD_PRESET')   ?: ($data['cld_upload_preset'] ?? '');
-  $CLD_FOLDER = getenv('CLOUDINARY_FOLDER')         ?: 'scorpions';
+  $CLD_NAME   = envv('CLOUDINARY_CLOUD_NAME',    envv('CLD_CLOUD_NAME',     $data['cld_cloud_name']    ?? ''));
+  $CLD_PRESET = envv('CLOUDINARY_UNSIGNED_PRESET', envv('CLD_UPLOAD_PRESET',  $data['cld_upload_preset'] ?? ''));
+  $CLD_FOLDER = envv('CLOUDINARY_FOLDER', 'scorpions');
 }
 
 // ==================== Disciplinas ====================
@@ -593,7 +601,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h($r['titulo'] ?? '') ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_disc=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -634,7 +642,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h($r['titulo'] ?? '') ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_foto=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -703,8 +711,8 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($videos as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= h($r['titulo']) ?></td>
-          <td><?= h($r['tipo']) ?></td>
+          <td><?= h($r['titulo'] ?? '') ?></td>
+          <td><?= h($r['tipo'] ?? '') ?></td>
           <td><?= !empty($r['video_url']) ? '<a class="link" href="'.h($r['video_url']).'" target="_blank">Abrir</a>' : '' ?></td>
           <td><?= !empty($r['cover_url'])?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
           <td><?= (int)$r['orden'] ?></td>
@@ -751,10 +759,10 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h($r['titulo'] ?? '') ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
-          <td><?= h($r['vigente_desde']) ?></td>
-          <td><?= h($r['vigente_hasta']) ?></td>
+          <td><?= h($r['vigente_desde'] ?? '') ?></td>
+          <td><?= h($r['vigente_hasta'] ?? '') ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_ofe=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -796,7 +804,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h($r['titulo'] ?? '') ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_promo=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -840,7 +848,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['nombre']) ?></td>
+          <td><?= h($r['nombre'] ?? '') ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
           <td><?= (int)$r['stock'] ?></td>
           <td><?= (int)$r['orden'] ?></td>
@@ -886,8 +894,8 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['foto_url'])?'<img class="thumb" src="'.h($r['foto_url']).'">':'' ?></td>
-          <td><?= h($r['nombre']) ?></td>
-          <td><?= h($r['rol']) ?></td>
+          <td><?= h($r['nombre'] ?? '') ?></td>
+          <td><?= h($r['rol'] ?? '') ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_eq=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
