@@ -1,53 +1,59 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Fotos</title>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fotos | FIGHT ACADEMY SCORPIONS</title>
 <link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/menu.js"></script>
+
+<!-- Estilos mínimos para la galería (si querés, luego pásalos a styles.css) -->
 <style>
-  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-  @media(min-width:600px){.gallery{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}}
-  .gallery a{border:1px solid #1b1f27;border-radius:12px;overflow:hidden;display:block;background:#0b0d11}
-  .gallery img{width:100%;height:180px;object-fit:cover}
+  .page { max-width:1100px; margin:24px auto; padding:0 16px; }
+  .gallery { display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
+  .ph-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:12px; overflow:hidden }
+  .ph-card img { width:100%; height:220px; object-fit:cover; display:block }
+  .ph-card figcaption { padding:8px 10px; font-size:.95rem; color:#cbd5e1 }
+  .muted{color:#94a3b8} .err{color:#ef4444}
 </style>
-</head><body>
-<!-- NAV -->
+
+<script defer src="assets/js/config.js"></script>
+<script defer src="assets/js/motivation.js"></script>
+<script defer src="assets/js/menu.js"></script>
+<script defer src="assets/js/fotos.js"></script>
+</head>
+<body>
+
+<!-- NAV (idéntico al index) -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#22c55e"/>
-          <stop offset="1" stop-color="#14b8a6"/>
-        </linearGradient>
-      </defs>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/>
+      </linearGradient></defs>
     </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
-  <!-- Botón hamburguesa -->
   <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">☰</button>
 
-  <!-- Links colapsables -->
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
-    <a class="nav-link" href="fotos.html">Fotos</a>
+    <a class="nav-link active" href="fotos.html">Fotos</a>
     <a class="nav-link" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
     <a class="nav-link" href="equipo.html">Equipo</a>
 
-    <!-- Submenú Ingresos -->
     <div class="menu" id="menu-ingresos">
       <button class="toggle" aria-expanded="false">Ingresos ▾</button>
       <div class="submenu" hidden>
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
         <a id="ing-config"
-           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
+           href="admin/configuraciones.php"
+           data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
@@ -56,24 +62,27 @@
   </div>
 </nav>
 
-<main class="container">
+<main class="page">
   <h1>Fotos</h1>
-  <div class="gallery" id="galeria"></div>
-</main>
-<footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+  <p class="muted">Galería de imágenes del gimnasio y las clases.</p>
 
+  <div id="gallery" class="gallery">
+    <p class="muted">Cargando fotos…</p>
+  </div>
+</main>
+
+<footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
+
+<!-- Ajuste del enlace de Configuraciones según entorno -->
 <script>
-(function(){
-  const API='https://TU-APP.onrender.com/api.php?sec=fotos&active=1&limit=300';
-  fetch(API).then(r=>r.json()).then(d=>{
-    const box=document.getElementById('galeria'); if(!box) return;
-    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto más fotos.</div>'; return; }
-    box.innerHTML=d.items.map(f=>`
-      <a href="${escA(f.imagen_url)}" target="_blank" rel="noopener">
-        <img src="${escA(f.imagen_url)}" alt="${escA(f.titulo||'')}">
-      </a>`).join('');
-  });
-  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+(function() {
+  const a = document.getElementById('ing-config');
+  if (!a) return;
+  const host = (location.hostname || '').toLowerCase();
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  const prodUrl = a.getAttribute('data-prod');
+  a.href = (!isLocal && prodUrl) ? prodUrl : 'admin/configuraciones.php';
 })();
 </script>
-</body></html>
+</body>
+</html>
