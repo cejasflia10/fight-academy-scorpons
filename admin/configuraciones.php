@@ -233,9 +233,10 @@ if ($db_ok) {
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 }
 
-// Cloudinary: primero intentar variables de entorno, si no, tomar de DB
-$CLD_NAME   = getenv('CLD_CLOUD_NAME')     ?: ($data['cld_cloud_name'] ?? '');
-$CLD_PRESET = getenv('CLD_UPLOAD_PRESET')  ?: ($data['cld_upload_preset'] ?? '');
+// Cloudinary: usar nombres de Render y compatibilidad con CLD_*
+$CLD_NAME   = getenv('CLOUDINARY_CLOUD_NAME')     ?: getenv('CLD_CLOUD_NAME')      ?: ($data['cld_cloud_name'] ?? '');
+$CLD_PRESET = getenv('CLOUDINARY_UNSIGNED_PRESET')?: getenv('CLD_UPLOAD_PRESET')   ?: ($data['cld_upload_preset'] ?? '');
+$CLD_FOLDER = getenv('CLOUDINARY_FOLDER')         ?: 'scorpions';
 
 if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
   $color_principal  = trim($_POST['color_principal'] ?? '');
@@ -268,8 +269,9 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       cld_cloud_name=VALUES(cld_cloud_name),
       cld_upload_preset=VALUES(cld_upload_preset)
   ");
+  // 11 valores -> 11 's'
   $stmt->bind_param(
-    'ssssssssssss',
+    'sssssssssss',
     $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
     $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
   );
@@ -281,8 +283,9 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 
   // refrescar vars para el JS
-  $CLD_NAME   = getenv('CLD_CLOUD_NAME')    ?: ($data['cld_cloud_name'] ?? '');
-  $CLD_PRESET = getenv('CLD_UPLOAD_PRESET') ?: ($data['cld_upload_preset'] ?? '');
+  $CLD_NAME   = getenv('CLOUDINARY_CLOUD_NAME')     ?: getenv('CLD_CLOUD_NAME')      ?: ($data['cld_cloud_name'] ?? '');
+  $CLD_PRESET = getenv('CLOUDINARY_UNSIGNED_PRESET')?: getenv('CLD_UPLOAD_PRESET')   ?: ($data['cld_upload_preset'] ?? '');
+  $CLD_FOLDER = getenv('CLOUDINARY_FOLDER')         ?: 'scorpions';
 }
 
 // ==================== Disciplinas ====================
@@ -544,8 +547,9 @@ img.thumb{height:52px;border-radius:8px}
 
     <h2 style="margin:20px 0 6px">Cloudinary (para subir a la nube)</h2>
     <div class="small" style="margin-bottom:10px">
-      Completá estos datos (o definilos como variables de entorno <code>CLD_CLOUD_NAME</code> y <code>CLD_UPLOAD_PRESET</code> en Render).
-      Con esto se habilitan los botones “Subir a la nube”.
+      Cargá estos datos o definí las variables de entorno <code>CLOUDINARY_CLOUD_NAME</code> y
+      <code>CLOUDINARY_UNSIGNED_PRESET</code> (opcional <code>CLOUDINARY_FOLDER</code>) en Render.
+      Con eso se habilitan los botones “Subir a la nube”.
     </div>
     <div class="grid">
       <div><label>Cloud name</label><input type="text" name="cld_cloud_name" value="<?=v('cld_cloud_name')?>"></div>
@@ -898,9 +902,10 @@ img.thumb{height:52px;border-radius:8px}
 <script src="https://upload-widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
 <script>
 (function(){
-  // Tomar credenciales desde PHP (env o DB)
+  // Credenciales desde PHP (env o DB)
   const CLD_NAME   = <?= json_encode($CLD_NAME) ?>;
   const CLD_PRESET = <?= json_encode($CLD_PRESET) ?>;
+  const CLD_FOLDER = <?= json_encode($CLD_FOLDER) ?>;
 
   function canUseCloudinary(){ return !!(window.cloudinary && CLD_NAME && CLD_PRESET); }
 
@@ -912,14 +917,14 @@ img.thumb{height:52px;border-radius:8px}
 
     if (!canUseCloudinary()){
       btn.disabled = true;
-      btn.title = "Completá Cloud name y Upload preset en Configuraciones para habilitar";
+      btn.title = "Completá Cloud name y Upload preset (o definí CLOUDINARY_CLOUD_NAME / CLOUDINARY_UNSIGNED_PRESET en Render)";
       return;
     }
     const w = cloudinary.createUploadWidget({
       cloudName: CLD_NAME,
       uploadPreset: CLD_PRESET,
+      folder: CLD_FOLDER,
       sources: ['local','url','camera'],
-      folder: 'scorpions',
       multiple: false,
       maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024, // 100MB video, 15MB imagen
       clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
