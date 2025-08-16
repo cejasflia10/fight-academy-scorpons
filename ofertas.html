@@ -1,5 +1,8 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FIGHT ACADEMY SCORPIONS | Ofertas</title>
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/config.js"></script>
@@ -8,12 +11,14 @@
   .offers{display:grid;grid-template-columns:1fr;gap:14px}
   @media(min-width:720px){.offers{grid-template-columns:repeat(2,1fr)}}
   .offer{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
-  .offer .img{aspect-ratio:16/9;background:#0b0d11}
+  .offer .img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#0b0d11}
   .offer .body{padding:12px}
   .meta{color:#9aa3b2;font-size:12px;margin:6px 0}
   .price{font-weight:800}
 </style>
-</head><body>
+</head>
+<body>
+
 <!-- NAV -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
@@ -36,7 +41,8 @@
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
     <a class="nav-link" href="fotos.html">Fotos</a>
-    <a class="nav-link" href="ofertas.html">Ofertas</a>
+    <a class="nav-link" href="videos.html">Videos</a><!-- NUEVO -->
+    <a class="nav-link active" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
     <a class="nav-link" href="equipo.html">Equipo</a>
@@ -48,9 +54,10 @@
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
+        <!-- Configuraciones: local vs producción -->
         <a id="ing-config"
-           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
+           href="/admin/configuraciones.php"
+           data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
@@ -61,33 +68,72 @@
 
 <main class="container">
   <h1>Ofertas</h1>
-  <div class="offers" id="offers"></div>
+  <div class="offers" id="offers"><div class="meta">Cargando ofertas…</div></div>
 </main>
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
 
 <script>
 (function(){
-  const API='https://TU-APP.onrender.com/api.php?sec=ofertas&active=1&limit=200';
-  fetch(API).then(r=>r.json()).then(d=>{
-    const box=document.getElementById('offers'); if(!box) return;
-    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto nuevas ofertas.</div>'; return; }
-    box.innerHTML=d.items.map(o=>`
-      <div class="offer">
-        ${o.imagen_url?`<img class="img" src="${escA(o.imagen_url)}" alt="${escA(o.titulo||'')}">`:''}
-        <div class="body">
-          <h3 class="title">${esc(o.titulo||'')}</h3>
-          ${o.descripcion?`<p class="meta">${esc(o.descripcion)}</p>`:''}
-          <div class="meta">
-            ${o.vigente_desde?`Desde: ${esc(o.vigente_desde)} · `:''}
-            ${o.vigente_hasta?`Hasta: ${esc(o.vigente_hasta)}`:''}
+  // Endpoint interno (creá /api/ofertas.php si aún no existe)
+  const API = '/api/ofertas.php';
+
+  fetch(API, {cache:'no-store'})
+    .then(r => r.json())
+    .then(d => {
+      const box = document.getElementById('offers'); if(!box) return;
+      if (!d || d.ok === false) {
+        box.innerHTML = '<div class="meta">No se pudieron cargar las ofertas.</div>';
+        return;
+      }
+      const items = d.items || d; // por si el endpoint devuelve lista directa
+      if (!items.length) {
+        box.innerHTML = '<div class="meta">Pronto nuevas ofertas.</div>';
+        return;
+      }
+      box.innerHTML = items.map(o => `
+        <div class="offer">
+          ${o.imagen_url ? `<img class="img" src="${escA(o.imagen_url)}" alt="${escA(o.titulo||'')}">` : ''}
+          <div class="body">
+            <h3 class="title">${esc(o.titulo||'')}</h3>
+            ${o.descripcion ? `<p class="meta">${esc(o.descripcion)}</p>` : ''}
+            <div class="meta">
+              ${o.vigente_desde ? `Desde: ${esc(o.vigente_desde)} · ` : ''}
+              ${o.vigente_hasta ? `Hasta: ${esc(o.vigente_hasta)}` : ''}
+            </div>
+            ${o.precio!=null ? `<div class="price">$ ${fmt(o.precio)}</div>` : ''}
           </div>
-          <div class="price">$ ${fmt(o.precio||0)}</div>
-        </div>
-      </div>`).join('');
-  });
-  function fmt(n){n=Number(n||0);return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}
-  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
-  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+        </div>`
+      ).join('');
+    })
+    .catch(() => {
+      const box = document.getElementById('offers');
+      if (box) box.innerHTML = '<div class="meta">No se pudieron cargar las ofertas.</div>';
+    });
+
+  // Utils
+  function fmt(n){ n=Number(n||0); return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function esc(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+  function escA(s){ return String(s||'').replace(/"/g,'&quot;'); }
+
+  // Ajustar link de "Configuraciones" según entorno
+  (function(){
+    const a = document.getElementById('ing-config');
+    if (!a) return;
+    const host = (location.hostname||'').toLowerCase();
+    const isProd = host.includes('onrender.com');
+    const prod = a.getAttribute('data-prod') || 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
+    a.href = isProd ? prod : '/admin/configuraciones.php';
+  })();
+
+  // Marcar activo según URL (por si se usa en otra página)
+  (function(){
+    const current = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    document.querySelectorAll('.nav-links .nav-link').forEach(a=>{
+      const href = (a.getAttribute('href')||'').toLowerCase();
+      if (href.endsWith(current)) a.classList.add('active');
+    });
+  })();
 })();
 </script>
-</body></html>
+</body>
+</html>
