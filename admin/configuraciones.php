@@ -20,6 +20,7 @@ if (!function_exists('h')) {
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
+
 // Lee env de varios lugares y alias
 if (!function_exists('envv')) {
   function envv(array $keys){
@@ -32,6 +33,7 @@ if (!function_exists('envv')) {
     return '';
   }
 }
+
 // Subir ARCHIVO (mismo nombre para file y texto)
 if (!function_exists('up_or_url')) {
   function up_or_url($inputName, $fallback=''){
@@ -47,9 +49,13 @@ if (!function_exists('up_or_url')) {
     return trim($_POST[$inputName] ?? $fallback);
   }
 }
-// Subir ARCHIVO (campo archivo distinto de campo URL)
+
+// Subir ARCHIVO (campo archivo distinto de campo URL) – preferir URL si viene
 if (!function_exists('up_or_url2')) {
   function up_or_url2($fileField, $urlField, $fallback=''){
+    $url = trim($_POST[$urlField] ?? '');
+    if ($url !== '') return $url; // preferir URL si está
+
     if (!empty($_FILES[$fileField]['name'])) {
       $dir = __DIR__ . '/../uploads';
       if (!is_dir($dir)) @mkdir($dir, 0775, true);
@@ -60,11 +66,11 @@ if (!function_exists('up_or_url2')) {
         return '/uploads/'.$fn;
       }
     }
-    return trim($_POST[$urlField] ?? $fallback);
+    return $fallback;
   }
 }
 
-// ===== Helpers de esquema y ORDER BY tolerante =====
+// ===== Helpers SQL: esquema/ORDER BY y prepare seguro =====
 if (!function_exists('tabla_existe')) {
   function tabla_existe($cx, $tabla){
     $rs = @$cx->query("SHOW TABLES LIKE '$tabla'");
@@ -90,6 +96,16 @@ if (!function_exists('ensure_col')) {
 if (!function_exists('order_by')) {
   function order_by($cx, $tabla){
     return col_existe($cx,$tabla,'orden') ? 'orden ASC, id DESC' : 'id DESC';
+  }
+}
+// prepare que no rompe: devuelve stmt o false y setea $err
+if (!function_exists('stmt_or_err')) {
+  function stmt_or_err($sql, &$err){
+    global $conexion;
+    $err = '';
+    $stmt = @$conexion->prepare($sql);
+    if (!$stmt) { $err = $conexion->error ?: 'prepare() falló'; return false; }
+    return $stmt;
   }
 }
 
@@ -256,11 +272,11 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
   $cld_cloud_name   = trim($_POST['cld_cloud_name'] ?? '');
   $cld_upload_preset= trim($_POST['cld_upload_preset'] ?? '');
 
-  $stmt = $conexion->prepare("
+  $err = '';
+  $stmt = stmt_or_err("
     INSERT INTO site_settings
       (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps,cld_cloud_name,cld_upload_preset)
-    VALUES
-      (1,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (1,?,?,?,?,?,?,?,?,?,?,?)
     ON DUPLICATE KEY UPDATE
       color_principal=VALUES(color_principal),
       color_secundario=VALUES(color_secundario),
@@ -273,20 +289,25 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='c
       google_maps=VALUES(google_maps),
       cld_cloud_name=VALUES(cld_cloud_name),
       cld_upload_preset=VALUES(cld_upload_preset)
-  ");
-  $stmt->bind_param(
-    'sssssssssss',
-    $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
-    $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
-  );
-  $ok = $stmt->execute(); $stmt->close();
+  ", $err);
 
-  $msg_cfg = $ok ? '✅ Configuraciones guardadas' : '❌ Error al guardar';
+  if ($stmt) {
+    $stmt->bind_param(
+      'sssssssssss',
+      $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
+      $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
+    );
+    $ok = $stmt->execute();
+    $msg_cfg = $ok ? '✅ Configuraciones guardadas' : ('❌ Error al guardar: '.$stmt->error);
+    $stmt->close();
+  } else {
+    $msg_cfg = '❌ Error SQL (config): '.$err;
+  }
 
   $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
   $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
 
-  // refrescar vars para el JS tras guardar
+  // refrescar vars
   $CLD_NAME   = envv(['CLOUDINARY_CLOUD_NAME','CLD_CLOUD_NAME']) ?: ($data['cld_cloud_name'] ?? '');
   $CLD_PRESET = envv(['CLOUDINARY_UNSIGNED_PRESET','CLD_UPLOAD_PRESET']) ?: ($data['cld_upload_preset'] ?? '');
   $CLD_FOLDER = envv(['CLOUDINARY_FOLDER']) ?: 'scorpions';
@@ -300,13 +321,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='d
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE disciplinas SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_disc=$ok?'✅ Disciplina actualizada':'❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE disciplinas SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_disc='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("INSERT INTO disciplinas (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)");
-    $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_disc=$ok?'✅ Disciplina guardada':'❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO disciplinas (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_disc='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_disc'])) {
@@ -321,13 +342,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='f
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE fotos SET titulo=?, imagen_url=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('ssiii',$titulo,$imagen,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_fotos=$ok?'✅ Foto actualizada':'❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE fotos SET titulo=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('ssiii',$titulo,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_fotos='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("INSERT INTO fotos (titulo,imagen_url,orden,activo) VALUES (?,?,?,?)");
-    $stmt->bind_param('ssii',$titulo,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_fotos=$ok?'✅ Foto guardada':'❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO fotos (titulo,imagen_url,orden,activo) VALUES (?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('ssii',$titulo,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_fotos='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_foto'])) {
@@ -346,13 +367,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
   $activo = isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE videos SET titulo=?, video_url=?, tipo=?, cover_url=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('ssssiii',$titulo,$video,$tipo,$cover,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_videos=$ok?'✅ Video actualizado':'❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE videos SET titulo=?, video_url=?, tipo=?, cover_url=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('ssssiii',$titulo,$video,$tipo,$cover,$orden,$activo,$id); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_videos='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("INSERT INTO videos (titulo,video_url,tipo,cover_url,orden,activo) VALUES (?,?,?,?,?,?)");
-    $stmt->bind_param('ssssii',$titulo,$video,$tipo,$cover,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_videos=$ok?'✅ Video guardado':'❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO videos (titulo,video_url,tipo,cover_url,orden,activo) VALUES (?,?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('ssssii',$titulo,$video,$tipo,$cover,$orden,$activo); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_videos='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_video'])) {
@@ -373,22 +394,18 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='o
   $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("
+    $err=''; $stmt=stmt_or_err("
       UPDATE ofertas
-      SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
-      WHERE id=?
-    ");
-    $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close();
-    $msg_ofe = $ok ? '✅ Oferta actualizada' : '❌ Error al actualizar';
+         SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
+       WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_ofe='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("
+    $err=''; $stmt=stmt_or_err("
       INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo)
-      VALUES (?,?,?,?,?,?,?,?)
-    ");
-    $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close();
-    $msg_ofe = $ok ? '✅ Oferta guardada' : '❌ Error al guardar';
+      VALUES (?,?,?,?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_ofe='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_ofe'])) {
@@ -404,13 +421,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='p
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE promociones SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promoción actualizada':'❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE promociones SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_promo='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("INSERT INTO promociones (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)");
-    $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_promo=$ok?'✅ Promoción guardada':'❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO promociones (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_promo='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_promo'])) {
@@ -427,20 +444,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='v
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("
-      UPDATE ventas
-      SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=?
-      WHERE id=?
-    ");
-    $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto actualizado' : '❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_ven='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("
-      INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo)
-      VALUES (?,?,?,?,?,?,?)
-    ");
-    $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_ven = $ok ? '✅ Producto guardado' : '❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_ven='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_ven'])) {
@@ -456,13 +466,13 @@ if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='e
   $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
   if ($id>0){
-    $stmt=$conexion->prepare("UPDATE equipo SET nombre=?, rol=?, bio=?, foto_url=?, instagram=?, orden=?, activo=? WHERE id=?");
-    $stmt->bind_param('sssssiii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo,$id);
-    $ok=$stmt->execute(); $stmt->close(); $msg_eq=$ok?'✅ Miembro actualizado':'❌ Error al actualizar';
+    $err=''; $stmt=stmt_or_err("UPDATE equipo SET nombre=?, rol=?, bio=?, foto_url=?, instagram=?, orden=?, activo=? WHERE id=?", $err);
+    if ($stmt){ $stmt->bind_param('sssssiii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo,$id); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_eq='❌ Error SQL: '.$err; }
   } else {
-    $stmt=$conexion->prepare("INSERT INTO equipo (nombre,rol,bio,foto_url,instagram,orden,activo) VALUES (?,?,?,?,?,?,?)");
-    $stmt->bind_param('sssssii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo);
-    $ok=$stmt->execute(); $stmt->close(); $msg_eq=$ok?'✅ Miembro guardado':'❌ Error al guardar';
+    $err=''; $stmt=stmt_or_err("INSERT INTO equipo (nombre,rol,bio,foto_url,instagram,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
+    if ($stmt){ $stmt->bind_param('sssssii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+    else { $msg_eq='❌ Error SQL: '.$err; }
   }
 }
 if ($db_ok && isset($_GET['del_eq'])) {
@@ -586,7 +596,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Título</label><input type="text" name="titulo" required></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="disc-img-file" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -627,7 +637,7 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo"></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="foto-file" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -694,7 +704,7 @@ img.thumb{height:52px;border-radius:8px}
 
         <div>
           <label>Cover (subir)</label>
-          <input type="file" name="cover_url" id="cover-file" accept="image/*">
+          <input type="file" name="cover_url" accept="image/*">
         </div>
         <div>
           <label>Cover (URL)</label>
@@ -743,7 +753,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Vigente desde</label><input type="date" name="vigente_desde"></div>
         <div><label>Vigente hasta</label><input type="date" name="vigente_hasta"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="ofe-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -788,7 +798,7 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo" required></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="promo-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -832,7 +842,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
         <div><label>Stock</label><input type="number" name="stock" value="0"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="ven-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -877,7 +887,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Nombre</label><input type="text" name="nombre" required></div>
         <div><label>Rol</label><input type="text" name="rol"></div>
         <div class="grid-1"><label>Bio</label><textarea name="bio"></textarea></div>
-        <div><label>Foto (subir)</label><input type="file" name="foto_url" id="eq-foto-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div><label>Foto (subir)</label><input type="file" name="foto_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Foto (URL)</label>
           <div class="inline">
@@ -917,100 +927,90 @@ img.thumb{height:52px;border-radius:8px}
 <script src="https://upload-widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
 <script>
 (function(){
-  // Credenciales desde PHP (env o DB)
   const CLD_NAME   = <?= json_encode($CLD_NAME) ?>;
   const CLD_PRESET = <?= json_encode($CLD_PRESET) ?>;
   const CLD_FOLDER = <?= json_encode($CLD_FOLDER) ?>;
 
-  const hasCreds = () => !!(CLD_NAME && CLD_PRESET);
+  function canUseCloudinary(){ return (typeof cloudinary !== 'undefined') && !!CLD_NAME && !!CLD_PRESET; }
 
-  async function directUpload(file, type){
-    const kind = (type === 'video') ? 'video' : 'image';
-    const url  = `https://api.cloudinary.com/v1_1/${CLD_NAME}/${kind}/upload`;
-    const fd   = new FormData();
-    fd.append('upload_preset', CLD_PRESET);
-    if (CLD_FOLDER) fd.append('folder', CLD_FOLDER);
-    fd.append('file', file);
-    const res = await fetch(url, { method: 'POST', body: fd });
-    const json = await res.json();
-    if (json.secure_url) return json.secure_url;
-    throw new Error(json.error?.message || 'No se pudo subir a Cloudinary');
-  }
+  function attachUploader(btnId, inputId, type, prevId){
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    const prev = prevId ? document.getElementById(prevId) : null;
+    if (!btn || !input) return;
 
-  // Siempre habilitado, con fallback si el widget no carga
-  function attachUploader({btnId, urlFieldId, fileFieldId=null, type='image', prevId=null}){
-    const btn    = document.getElementById(btnId);
-    const urlIn  = document.getElementById(urlFieldId);
-    const fileIn = fileFieldId ? document.getElementById(fileFieldId) : null;
-    const prev   = prevId ? document.getElementById(prevId) : null;
-    if (!btn || !urlIn) return;
+    if (!canUseCloudinary()){
+      btn.disabled = true;
+      btn.title = "Cloudinary no configurado en el servidor (Cloud/Preset vacíos o librería bloqueada)";
+      console.log('[Cloudinary] no habilitado', {cloudName: CLD_NAME, preset: CLD_PRESET, lib: typeof cloudinary});
+      return;
+    }
 
-    btn.disabled = false;
+    const w = cloudinary.createUploadWidget({
+      cloudName: CLD_NAME,
+      uploadPreset: CLD_PRESET,
+      folder: CLD_FOLDER,
+      sources: ['local','url','camera'],
+      multiple: false,
+      maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
+      clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
+      resourceType: type
+    }, (error, result) => {
+      if (!error && result && result.event === "success") {
+        input.value = result.info.secure_url;
+        if (prev){ prev.src = result.info.secure_url; prev.style.display = 'inline-block'; }
 
-    btn.addEventListener('click', async (e)=>{
-      e.preventDefault();
-
-      if (!hasCreds()){
-        alert('Falta configurar Cloud name y Upload preset (en Configuraciones).');
-        return;
-      }
-
-      // Si el widget está disponible, usarlo
-      if (window.cloudinary && cloudinary.createUploadWidget){
-        const w = cloudinary.createUploadWidget({
-          cloudName: CLD_NAME,
-          uploadPreset: CLD_PRESET,
-          folder: CLD_FOLDER,
-          sources: ['local','url','camera'],
-          multiple: false,
-          resourceType: type,
-          maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
-          clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp'])
-        }, (error, result) => {
-          if (!error && result && result.event === "success") {
-            urlIn.value = result.info.secure_url;
-            if (prev){ prev.src = result.info.secure_url; prev.style.display = 'inline-block'; }
-            const hint = document.getElementById('video-hint');
-            if (hint && type==='video') hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
-          }
-        });
-        w.open();
-        return;
-      }
-
-      // Fallback: subir directo el archivo elegido
-      if (fileIn && fileIn.files && fileIn.files[0]){
-        const old = btn.textContent;
-        btn.disabled = true; btn.textContent = 'Subiendo...';
-        try{
-          const secureUrl = await directUpload(fileIn.files[0], type);
-          urlIn.value = secureUrl;
-          if (prev){ prev.src = secureUrl; prev.style.display = 'inline-block'; }
-        }catch(err){
-          alert(err.message || 'Error subiendo a Cloudinary');
-          console.error(err);
-        }finally{
-          btn.disabled = false; btn.textContent = old;
+        if (type === 'video') {
+          const fileField = document.getElementById('video-file');
+          if (fileField) { fileField.value = ''; fileField.disabled = true; }
+          const hint = document.getElementById('video-hint');
+          if (hint) hint.textContent = 'Subido ('+Math.round(result.info.bytes/1024/1024)+' MB)';
         }
-      } else {
-        alert('Elegí un archivo en “(subir)” o esperá a que cargue el widget.');
       }
     });
+
+    btn.addEventListener('click', (e) => { e.preventDefault(); w.open(); });
   }
 
-  // Fotos (con fallback)
-  attachUploader({btnId:'cld-foto-btn', urlFieldId:'foto-url', fileFieldId:'foto-file', type:'image', prevId:'foto-prev'});
+  // Fotos
+  attachUploader('cld-foto-btn','foto-url','image','foto-prev');
 
-  // Disciplinas / Ofertas / Promos / Ventas / Equipo (con fallback)
-  attachUploader({btnId:'btn-disc-img',  urlFieldId:'disc-img-url',  fileFieldId:'disc-img-file',  type:'image', prevId:'disc-img-prev'});
-  attachUploader({btnId:'btn-ofe-img',   urlFieldId:'ofe-img-url',   fileFieldId:'ofe-img-file',   type:'image', prevId:'ofe-img-prev'});
-  attachUploader({btnId:'btn-promo-img', urlFieldId:'promo-img-url', fileFieldId:'promo-img-file', type:'image', prevId:'promo-img-prev'});
-  attachUploader({btnId:'btn-ven-img',   urlFieldId:'ven-img-url',   fileFieldId:'ven-img-file',   type:'image', prevId:'ven-img-prev'});
-  attachUploader({btnId:'btn-eq-foto',   urlFieldId:'eq-foto-url',   fileFieldId:'eq-foto-file',   type:'image', prevId:'eq-foto-prev'});
+  // Disciplinas / Ofertas / Promos / Ventas / Equipo (imágenes)
+  attachUploader('btn-disc-img','disc-img-url','image','disc-img-prev');
+  attachUploader('btn-ofe-img','ofe-img-url','image','ofe-img-prev');
+  attachUploader('btn-promo-img','promo-img-url','image','promo-img-prev');
+  attachUploader('btn-ven-img','ven-img-url','image','ven-img-prev');
+  attachUploader('btn-eq-foto','eq-foto-url','image','eq-foto-prev');
 
-  // Videos: archivo remoto y cover (con fallback)
-  attachUploader({btnId:'cld-video-btn', urlFieldId:'video-url', fileFieldId:'video-file', type:'video'});
-  attachUploader({btnId:'cld-cover-btn', urlFieldId:'cover-url', fileFieldId:'cover-file', type:'image', prevId:'cover-prev'});
+  // Videos: archivo remoto y cover
+  attachUploader('cld-video-btn','video-url','video',null);
+  attachUploader('cld-cover-btn','cover-url','image','cover-prev');
+
+  // Rehabilitar file si la URL queda vacía
+  (function () {
+    const url = document.getElementById('video-url');
+    const file = document.getElementById('video-file');
+    if (!url || !file) return;
+    function toggle(){ file.disabled = url.value.trim() !== ''; }
+    url.addEventListener('input', toggle);
+    url.addEventListener('change', toggle);
+    toggle();
+  })();
+
+  // Bloquear submit si intentan mandar un archivo de video grande
+  (function(){
+    const form = Array.from(document.querySelectorAll('form'))
+      .find(f => f.querySelector('input[name="__form"][value="videos"]'));
+    const file = document.getElementById('video-file');
+    if (!form || !file) return;
+    form.addEventListener('submit', (e) => {
+      const f = file.files && file.files[0];
+      if (f && f.size > 20 * 1024 * 1024) {
+        e.preventDefault();
+        alert('El video local supera 20MB. Usá “Subir a la nube” y guardá con la URL.');
+      }
+    });
+  })();
 })();
 </script>
 </body>
