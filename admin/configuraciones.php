@@ -85,7 +85,7 @@ if (!function_exists('up_or_url2')) {
       $fn  = time().'_'.mt_rand(100000,999999).($ext?'.'.$ext:'');
       $dest = $dir.'/'.$fn;
       if (@move_uploaded_file($_FILES[$fileField]['tmp_name'], $dest)) {
-        return '/uploads/'.$fn;
+        return '/uploads/'.$fn';
       }
     }
     return $fallback;
@@ -557,7 +557,7 @@ a.link{color:#22c55e;text-decoration:none}
 .grid-1{grid-template-columns:1fr}
 label{font-weight:600}
 input,textarea,select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:#fff}
-textarea{min-height:90px}
+textarea{min_height:90px}
 .btn{background:#22c55e;border:0;color:#000;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
 .btn[disabled]{opacity:.6;cursor:not-allowed}
 .msg{margin:12px 0;padding:10px;border-radius:8px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
@@ -1011,62 +1011,107 @@ img.thumb{height:52px;border-radius:8px}
   const CLD_PRESET = <?= json_encode($CLD_PRESET) ?>;
   const CLD_FOLDER = <?= json_encode($CLD_FOLDER) ?>;
 
-  function canUseCloudinary(){ return (typeof cloudinary !== 'undefined') && !!CLD_NAME && !!CLD_PRESET; }
+  function canUseWidget(){ return (typeof cloudinary !== 'undefined') && !!CLD_NAME && !!CLD_PRESET; }
 
-  function attachUploader(btnId, inputId, type, prevId){
-    const btn = document.getElementById(btnId);
-    const input = document.getElementById(inputId);
-    const prev = prevId ? document.getElementById(prevId) : null;
-    if (!btn || !input) return;
-
-    if (!canUseCloudinary()){
-      btn.disabled = true;
-      btn.title = "Cloudinary no configurado en el servidor (Cloud/Preset vacíos o librería bloqueada)";
-      console.log('[Cloudinary] no habilitado', {cloudName: CLD_NAME, preset: CLD_PRESET, lib: typeof cloudinary});
-      return;
-    }
-
-    const w = cloudinary.createUploadWidget({
-      cloudName: CLD_NAME,
-      uploadPreset: CLD_PRESET,
-      folder: CLD_FOLDER,
-      sources: ['local','url','camera'],
-      multiple: false,
-      maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
-      clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
-      resourceType: type
-    }, (error, result) => {
-      if (!error && result && result.event === "success") {
-        input.value = result.info.secure_url;
-        if (prev){ prev.src = result.info.secure_url; prev.style.display = 'inline-block'; }
-
-        if (type === 'video') {
-          const fileField = document.getElementById('video-file');
-          if (fileField) { fileField.value = ''; fileField.disabled = true; }
-          const hint = document.getElementById('video-hint');
-          if (hint) hint.textContent = 'Subido ('+Math.round(result.info.bytes/1024/1024)+' MB)';
-        }
-      }
-    });
-
-    btn.addEventListener('click', (e) => { e.preventDefault(); w.open(); });
+  // Subida directa (unsigned) a Cloudinary si el widget no está disponible
+  async function directUpload(file, resourceType){
+    const endpoint = `https://api.cloudinary.com/v1_1/${CLD_NAME}/${resourceType}/upload`;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLD_PRESET);
+    if (CLD_FOLDER) fd.append('folder', CLD_FOLDER);
+    const res = await fetch(endpoint, { method:'POST', body: fd });
+    if (!res.ok) throw new Error('Upload HTTP ' + res.status);
+    return await res.json(); // { secure_url, bytes, ... }
   }
 
-  // Fotos
-  attachUploader('cld-foto-btn','foto-url','image','foto-prev');
+  // btnId, inputId (texto URL), type ('image'|'video'), prevId (img opcional), fileName del input file
+  function attachUploader(btnId, inputId, type, prevId, fileFieldName){
+    const btn   = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    const prev  = prevId ? document.getElementById(prevId) : null;
+    if (!btn || !input) return;
 
-  // Disciplinas / Ofertas / Promos / Ventas / Equipo (imágenes)
-  attachUploader('btn-disc-img','disc-img-url','image','disc-img-prev');
-  attachUploader('btn-ofe-img','ofe-img-url','image','ofe-img-prev');
-  attachUploader('btn-promo-img','promo-img-url','image','promo-img-prev');
-  attachUploader('btn-ven-img','ven-img-url','image','ven-img-prev');
-  attachUploader('btn-eq-foto','eq-foto-url','image','eq-foto-prev');
+    const form = btn.closest('form');
+    const file = form ? form.querySelector(`input[type="file"][name="${fileFieldName}"]`) : null;
 
-  // Videos: archivo remoto y cover
-  attachUploader('cld-video-btn','video-url','video',null);
-  attachUploader('cld-cover-btn','cover-url','image','cover-prev');
+    // Mostrar preview si pegan una URL manualmente
+    if (prev && input){
+      const syncPrev = () => {
+        const v = input.value.trim();
+        if (v) { prev.src = v; prev.style.display = 'inline-block'; }
+        else   { prev.style.display = 'none'; }
+      };
+      input.addEventListener('input', syncPrev);
+      input.addEventListener('change', syncPrev);
+    }
 
-  // Rehabilitar file si la URL queda vacía
+    // Si hay widget, lo usamos; si no, fallback directo
+    let widget = null;
+    if (canUseWidget()){
+      widget = cloudinary.createUploadWidget({
+        cloudName: CLD_NAME,
+        uploadPreset: CLD_PRESET,
+        folder: CLD_FOLDER,
+        sources: ['local','url','camera'],
+        multiple: false,
+        maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
+        clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
+        resourceType: type
+      }, (error, result) => {
+        if (!error && result && result.event === "success") {
+          input.value = result.info.secure_url || '';
+          if (prev && result.info.secure_url){ prev.src = result.info.secure_url; prev.style.display='inline-block'; }
+          if (type === 'video') {
+            const vf = document.getElementById('video-file');
+            if (vf) { vf.value = ''; vf.disabled = true; }
+            const hint = document.getElementById('video-hint');
+            if (hint) hint.textContent = 'Subido ('+Math.round(result.info.bytes/1024/1024)+' MB)';
+          }
+        }
+      });
+    } else {
+      btn.title = "Subida directa (sin widget)";
+    }
+
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (widget) { widget.open(); return; }
+
+      // Fallback: subir el archivo de la galería/cámara
+      const f = file && file.files ? file.files[0] : null;
+      if (!f) { alert('Elegí un archivo en “Imagen (subir)” o pegá una URL.'); return; }
+
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Subiendo...';
+      try{
+        const r = await directUpload(f, type === 'video' ? 'video' : 'image');
+        input.value = r.secure_url || '';
+        if (prev && r.secure_url){ prev.src = r.secure_url; prev.style.display='inline-block'; }
+        if (type === 'video') {
+          const hint = document.getElementById('video-hint');
+          if (hint && r.bytes) hint.textContent = 'Subido ('+Math.round(r.bytes/1024/1024)+' MB)';
+        }
+      }catch(err){
+        console.error(err);
+        alert('No se pudo subir a la nube. Probá nuevamente o pegá una URL.');
+      }finally{
+        btn.disabled = false; btn.textContent = old;
+      }
+    });
+  }
+
+  // Secciones (mapeo del campo file correcto)
+  attachUploader('cld-foto-btn','foto-url','image','foto-prev','imagen_url'); // FOTOS
+  attachUploader('btn-disc-img','disc-img-url','image','disc-img-prev','imagen_url'); // DISCIPLINAS
+  attachUploader('btn-ofe-img','ofe-img-url','image','ofe-img-prev','imagen_url');   // OFERTAS
+  attachUploader('btn-promo-img','promo-img-url','image','promo-img-prev','imagen_url'); // PROMOS
+  attachUploader('btn-ven-img','ven-img-url','image','ven-img-prev','imagen_url');   // VENTAS
+  attachUploader('btn-eq-foto','eq-foto-url','image','eq-foto-prev','foto_url');     // EQUIPO
+  attachUploader('cld-video-btn','video-url','video',null,'video_file');             // VIDEOS: archivo
+  attachUploader('cld-cover-btn','cover-url','image','cover-prev','cover_url');      // VIDEOS: cover
+
+  // Habilitar/deshabilitar file de video según URL
   (function () {
     const url = document.getElementById('video-url');
     const file = document.getElementById('video-file');
