@@ -20,7 +20,6 @@ if (!function_exists('h')) {
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
-
 // Lee env de varios lugares y alias
 if (!function_exists('envv')) {
   function envv(array $keys){
@@ -33,7 +32,6 @@ if (!function_exists('envv')) {
     return '';
   }
 }
-
 // Subir ARCHIVO (mismo nombre para file y texto)
 if (!function_exists('up_or_url')) {
   function up_or_url($inputName, $fallback=''){
@@ -578,8 +576,6 @@ img.thumb{height:52px;border-radius:8px}
     </div>
   </form>
 
-  <?php /* ==== DISCIPLINAS/FOTOS/VIDEOS/OFERTAS/PROMOS/VENTAS/EQUIPO (idéntico a tu versión anterior) ==== */ ?>
-
   <!-- ==================== DISCIPLINAS ==================== -->
   <?php if($msg_disc): ?><div class="msg"><?=h($msg_disc)?></div><?php endif; ?>
   <div class="card">
@@ -590,7 +586,7 @@ img.thumb{height:52px;border-radius:8px}
         <div><label>Título</label><input type="text" name="titulo" required></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
         <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="disc-img-file" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -631,7 +627,7 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo"></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="foto-file" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -663,68 +659,358 @@ img.thumb{height:52px;border-radius:8px}
     </table>
   </div>
 
-  <!-- ==================== VIDEOS / OFERTAS / PROMOS / VENTAS / EQUIPO -->
-  <?php /* (Se mantiene igual que tu versión previa; omitido por espacio) */ ?>
+  <!-- ==================== VIDEOS ==================== -->
+  <?php if($msg_videos): ?><div class="msg"><?=h($msg_videos)?></div><?php endif; ?>
+  <div class="card">
+    <h2>Videos cortos / Reels — alta rápida</h2>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="__form" value="videos"><input type="hidden" name="id" value="0">
+      <div class="grid">
+        <div><label>Título</label><input type="text" name="titulo"></div>
 
+        <div>
+          <label>Tipo</label>
+          <select name="tipo">
+            <option value="youtube">YouTube</option>
+            <option value="instagram">Instagram</option>
+            <option value="mp4">MP4 (archivo o link)</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Video (subir)</label>
+          <input type="file" name="video_file" id="video-file" accept="video/*">
+          <div class="badge">En Render free, los archivos locales no persisten.</div>
+        </div>
+
+        <div>
+          <label>Video URL</label>
+          <div class="inline">
+            <input type="url" name="video_url" id="video-url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4">
+            <button type="button" class="btn" id="cld-video-btn">Subir a la nube</button>
+          </div>
+          <div id="video-hint" class="badge"></div>
+        </div>
+
+        <div>
+          <label>Cover (subir)</label>
+          <input type="file" name="cover_url" id="cover-file" accept="image/*">
+        </div>
+        <div>
+          <label>Cover (URL)</label>
+          <div class="inline">
+            <input type="url" name="cover_url" id="cover-url" placeholder="https://...">
+            <button type="button" class="btn" id="cld-cover-btn">Subir cover</button>
+          </div>
+          <img id="cover-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+
+        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar video</button></div>
+    </form>
+
+    <h3 style="margin-top:16px">Últimos 15 videos</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>URL</th><th>Cover</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach($videos as $r): ?>
+        <tr>
+          <td><?= (int)$r['id'] ?></td>
+          <td><?= h($r['titulo']) ?></td>
+          <td><?= h($r['tipo']) ?></td>
+          <td><?= !empty($r['video_url']) ? '<a class="link" href="'.h($r['video_url']).'" target="_blank">Abrir</a>' : '' ?></td>
+          <td><?= !empty($r['cover_url'])?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
+          <td><?= (int)$r['orden'] ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
+          <td><a class="link" href="?del_video=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+        </tr>
+      <?php endforeach; if(!$videos): ?><tr><td colspan="8">Sin videos</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== OFERTAS ==================== -->
+  <?php if($msg_ofe): ?><div class="msg"><?=h($msg_ofe)?></div><?php endif; ?>
+  <div class="card">
+    <h2>Ofertas — alta rápida</h2>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="__form" value="ofertas"><input type="hidden" name="id" value="0">
+      <div class="grid">
+        <div><label>Título</label><input type="text" name="titulo" required></div>
+        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
+        <div><label>Vigente desde</label><input type="date" name="vigente_desde"></div>
+        <div><label>Vigente hasta</label><input type="date" name="vigente_hasta"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="ofe-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="ofe-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-ofe-img">Subir a la nube</button>
+          </div>
+          <img id="ofe-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar oferta</button></div>
+    </form>
+
+    <h3 style="margin-top:16px">Últimas 15 ofertas</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>$</th><th>Desde</th><th>Hasta</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach($ofertas as $r): ?>
+        <tr>
+          <td><?= (int)$r['id'] ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= h($r['titulo']) ?></td>
+          <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
+          <td><?= h($r['vigente_desde']) ?></td>
+          <td><?= h($r['vigente_hasta']) ?></td>
+          <td><?= (int)$r['orden'] ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
+          <td><a class="link" href="?del_ofe=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+        </tr>
+      <?php endforeach; if(!$ofertas): ?><tr><td colspan="9">Sin ofertas</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== PROMOCIONES ==================== -->
+  <?php if($msg_promo): ?><div class="msg"><?=h($msg_promo)?></div><?php endif; ?>
+  <div class="card">
+    <h2>Promociones — alta rápida</h2>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="__form" value="promociones"><input type="hidden" name="id" value="0">
+      <div class="grid">
+        <div><label>Título</label><input type="text" name="titulo" required></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="promo-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="promo-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-promo-img">Subir a la nube</button>
+          </div>
+          <img id="promo-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar promoción</button></div>
+    </form>
+
+    <h3 style="margin-top:16px">Últimas 15 promociones</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach($promos as $r): ?>
+        <tr>
+          <td><?= (int)$r['id'] ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= h($r['titulo']) ?></td>
+          <td><?= (int)$r['orden'] ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
+          <td><a class="link" href="?del_promo=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+        </tr>
+      <?php endforeach; if(!$promos): ?><tr><td colspan="6">Sin promociones</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== VENTAS ==================== -->
+  <?php if($msg_ven): ?><div class="msg"><?=h($msg_ven)?></div><?php endif; ?>
+  <div class="card">
+    <h2>Ventas (Productos) — alta rápida</h2>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="__form" value="ventas"><input type="hidden" name="id" value="0">
+      <div class="grid">
+        <div><label>Nombre</label><input type="text" name="nombre" required></div>
+        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
+        <div><label>Stock</label><input type="number" name="stock" value="0"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" id="ven-img-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Imagen (URL)</label>
+          <div class="inline">
+            <input type="text" name="imagen_url" id="ven-img-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-ven-img">Subir a la nube</button>
+          </div>
+          <img id="ven-img-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar producto</button></div>
+    </form>
+
+    <h3 style="margin-top:16px">Últimos 15 productos</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Img</th><th>Nombre</th><th>$</th><th>Stock</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach($ventas as $r): ?>
+        <tr>
+          <td><?= (int)$r['id'] ?></td>
+          <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
+          <td><?= h($r['nombre']) ?></td>
+          <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
+          <td><?= (int)$r['stock'] ?></td>
+          <td><?= (int)$r['orden'] ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
+          <td><a class="link" href="?del_ven=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+        </tr>
+      <?php endforeach; if(!$ventas): ?><tr><td colspan="8">Sin productos</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== EQUIPO ==================== -->
+  <?php if($msg_eq): ?><div class="msg"><?=h($msg_eq)?></div><?php endif; ?>
+  <div class="card">
+    <h2>Equipo — alta rápida</h2>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="__form" value="equipo"><input type="hidden" name="id" value="0">
+      <div class="grid">
+        <div><label>Nombre</label><input type="text" name="nombre" required></div>
+        <div><label>Rol</label><input type="text" name="rol"></div>
+        <div class="grid-1"><label>Bio</label><textarea name="bio"></textarea></div>
+        <div><label>Foto (subir)</label><input type="file" name="foto_url" id="eq-foto-file" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
+        <div>
+          <label>Foto (URL)</label>
+          <div class="inline">
+            <input type="text" name="foto_url" id="eq-foto-url" placeholder="https://...">
+            <button type="button" class="btn" id="btn-eq-foto">Subir a la nube</button>
+          </div>
+          <img id="eq-foto-prev" class="thumb" style="margin-top:8px;display:none">
+        </div>
+        <div><label>Instagram (URL)</label><input type="url" name="instagram" placeholder="https://instagram.com/..."></div>
+        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar miembro</button></div>
+    </form>
+
+    <h3 style="margin-top:16px">Últimos 15 miembros</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Foto</th><th>Nombre</th><th>Rol</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach($equipo as $r): ?>
+        <tr>
+          <td><?= (int)$r['id'] ?></td>
+          <td><?= !empty($r['foto_url'])?'<img class="thumb" src="'.h($r['foto_url']).'">':'' ?></td>
+          <td><?= h($r['nombre']) ?></td>
+          <td><?= h($r['rol']) ?></td>
+          <td><?= (int)$r['orden'] ?></td>
+          <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
+          <td><a class="link" href="?del_eq=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+        </tr>
+      <?php endforeach; if(!$equipo): ?><tr><td colspan="7">Sin miembros</td></tr><?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <!-- Cloudinary widget -->
 <script src="https://upload-widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
 <script>
 (function(){
+  // Credenciales desde PHP (env o DB)
   const CLD_NAME   = <?= json_encode($CLD_NAME) ?>;
   const CLD_PRESET = <?= json_encode($CLD_PRESET) ?>;
   const CLD_FOLDER = <?= json_encode($CLD_FOLDER) ?>;
 
-  function canUseCloudinary(){ return (typeof cloudinary !== 'undefined') && !!CLD_NAME && !!CLD_PRESET; }
+  const hasCreds = () => !!(CLD_NAME && CLD_PRESET);
 
-  function attachUploader(btnId, inputId, type, prevId){
-    const btn = document.getElementById(btnId);
-    const input = document.getElementById(inputId);
-    const prev = prevId ? document.getElementById(prevId) : null;
-    if (!btn || !input) return;
-
-    if (!canUseCloudinary()){
-      btn.disabled = true;
-      btn.title = "Cloudinary no configurado en el servidor (Cloud/Preset vacíos o librería bloqueada)";
-      console.log('[Cloudinary] no habilitado', {cloudName: CLD_NAME, preset: CLD_PRESET, lib: typeof cloudinary});
-      return;
-    }
-
-    const w = cloudinary.createUploadWidget({
-      cloudName: CLD_NAME,
-      uploadPreset: CLD_PRESET,
-      folder: CLD_FOLDER,
-      sources: ['local','url','camera'],
-      multiple: false,
-      maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
-      clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp']),
-      resourceType: type
-    }, (error, result) => {
-      if (!error && result && result.event === "success") {
-        input.value = result.info.secure_url;
-        if (prev){ prev.src = result.info.secure_url; prev.style.display = 'inline-block'; }
-        const hint = document.getElementById('video-hint');
-        if (hint && type==='video') hint.textContent = 'Subido ('+Math.round(result.info.bytes/1024/1024)+' MB)';
-      }
-    });
-
-    btn.addEventListener('click', (e) => { e.preventDefault(); w.open(); });
+  async function directUpload(file, type){
+    const kind = (type === 'video') ? 'video' : 'image';
+    const url  = `https://api.cloudinary.com/v1_1/${CLD_NAME}/${kind}/upload`;
+    const fd   = new FormData();
+    fd.append('upload_preset', CLD_PRESET);
+    if (CLD_FOLDER) fd.append('folder', CLD_FOLDER);
+    fd.append('file', file);
+    const res = await fetch(url, { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json.secure_url) return json.secure_url;
+    throw new Error(json.error?.message || 'No se pudo subir a Cloudinary');
   }
 
-  // Fotos
-  attachUploader('cld-foto-btn','foto-url','image','foto-prev');
+  // Siempre habilitado, con fallback si el widget no carga
+  function attachUploader({btnId, urlFieldId, fileFieldId=null, type='image', prevId=null}){
+    const btn    = document.getElementById(btnId);
+    const urlIn  = document.getElementById(urlFieldId);
+    const fileIn = fileFieldId ? document.getElementById(fileFieldId) : null;
+    const prev   = prevId ? document.getElementById(prevId) : null;
+    if (!btn || !urlIn) return;
 
-  // Disciplinas / Ofertas / Promos / Ventas / Equipo (imágenes)
-  attachUploader('btn-disc-img','disc-img-url','image','disc-img-prev');
-  attachUploader('btn-ofe-img','ofe-img-url','image','ofe-img-prev');
-  attachUploader('btn-promo-img','promo-img-url','image','promo-img-prev');
-  attachUploader('btn-ven-img','ven-img-url','image','ven-img-prev');
-  attachUploader('btn-eq-foto','eq-foto-url','image','eq-foto-prev');
+    btn.disabled = false;
 
-  // Videos: archivo remoto y cover
-  attachUploader('cld-video-btn','video-url','video',null);
-  attachUploader('cld-cover-btn','cover-url','image','cover-prev');
+    btn.addEventListener('click', async (e)=>{
+      e.preventDefault();
+
+      if (!hasCreds()){
+        alert('Falta configurar Cloud name y Upload preset (en Configuraciones).');
+        return;
+      }
+
+      // Si el widget está disponible, usarlo
+      if (window.cloudinary && cloudinary.createUploadWidget){
+        const w = cloudinary.createUploadWidget({
+          cloudName: CLD_NAME,
+          uploadPreset: CLD_PRESET,
+          folder: CLD_FOLDER,
+          sources: ['local','url','camera'],
+          multiple: false,
+          resourceType: type,
+          maxFileSize: (type==='video' ? 100 : 15) * 1024 * 1024,
+          clientAllowedFormats: (type==='video' ? ['mp4','mov','webm'] : ['jpg','jpeg','png','webp'])
+        }, (error, result) => {
+          if (!error && result && result.event === "success") {
+            urlIn.value = result.info.secure_url;
+            if (prev){ prev.src = result.info.secure_url; prev.style.display = 'inline-block'; }
+            const hint = document.getElementById('video-hint');
+            if (hint && type==='video') hint.textContent = 'Subido a Cloudinary ('+Math.round(result.info.bytes/1024/1024)+' MB)';
+          }
+        });
+        w.open();
+        return;
+      }
+
+      // Fallback: subir directo el archivo elegido
+      if (fileIn && fileIn.files && fileIn.files[0]){
+        const old = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Subiendo...';
+        try{
+          const secureUrl = await directUpload(fileIn.files[0], type);
+          urlIn.value = secureUrl;
+          if (prev){ prev.src = secureUrl; prev.style.display = 'inline-block'; }
+        }catch(err){
+          alert(err.message || 'Error subiendo a Cloudinary');
+          console.error(err);
+        }finally{
+          btn.disabled = false; btn.textContent = old;
+        }
+      } else {
+        alert('Elegí un archivo en “(subir)” o esperá a que cargue el widget.');
+      }
+    });
+  }
+
+  // Fotos (con fallback)
+  attachUploader({btnId:'cld-foto-btn', urlFieldId:'foto-url', fileFieldId:'foto-file', type:'image', prevId:'foto-prev'});
+
+  // Disciplinas / Ofertas / Promos / Ventas / Equipo (con fallback)
+  attachUploader({btnId:'btn-disc-img',  urlFieldId:'disc-img-url',  fileFieldId:'disc-img-file',  type:'image', prevId:'disc-img-prev'});
+  attachUploader({btnId:'btn-ofe-img',   urlFieldId:'ofe-img-url',   fileFieldId:'ofe-img-file',   type:'image', prevId:'ofe-img-prev'});
+  attachUploader({btnId:'btn-promo-img', urlFieldId:'promo-img-url', fileFieldId:'promo-img-file', type:'image', prevId:'promo-img-prev'});
+  attachUploader({btnId:'btn-ven-img',   urlFieldId:'ven-img-url',   fileFieldId:'ven-img-file',   type:'image', prevId:'ven-img-prev'});
+  attachUploader({btnId:'btn-eq-foto',   urlFieldId:'eq-foto-url',   fileFieldId:'eq-foto-file',   type:'image', prevId:'eq-foto-prev'});
+
+  // Videos: archivo remoto y cover (con fallback)
+  attachUploader({btnId:'cld-video-btn', urlFieldId:'video-url', fileFieldId:'video-file', type:'video'});
+  attachUploader({btnId:'cld-cover-btn', urlFieldId:'cover-url', fileFieldId:'cover-file', type:'image', prevId:'cover-prev'});
 })();
 </script>
 </body>
