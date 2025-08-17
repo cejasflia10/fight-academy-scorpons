@@ -1,18 +1,35 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Videos</title>
-<link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/menu.js"></script>
-<style>
-  .reels{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-  @media(min-width:700px){.reels{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
-  .reel{border:1px solid #1b1f27;border-radius:12px;padding:10px;background:linear-gradient(180deg,#12141a,#0f1115)}
-  .reel h4{margin:4px 6px 10px}
-  .frame{position:relative;padding-top:177%;border-radius:10px;overflow:hidden;background:#0b0d11}
-  .frame iframe,.frame video{position:absolute;inset:0;width:100%;height:100%}
-</style>
-</head><body>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIGHT ACADEMY SCORPIONS | Videos</title>
+
+  <!-- Estilos base + responsive global -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/responsive.css">
+
+  <!-- JS comunes -->
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/assets/js/menu.js"></script>
+  <script defer src="/assets/js/header.js"></script>
+
+  <style>
+    /* Ajustes específicos de esta página */
+    .reels{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+    @media(min-width:700px){.reels{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+    .reel{border:1px solid var(--c-border);border-radius:16px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0))}
+    .reel h4{margin:0 6px 10px}
+    .frame{position:relative;padding-top:177%;border-radius:12px;overflow:hidden;background:#0b0d11}
+    .frame iframe,.frame video{position:absolute;inset:0;width:100%;height:100%}
+    .cover{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:12px;background:#0b0d11}
+    .act{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .empty{opacity:.85;padding:12px}
+    .banner{margin-bottom:16px}
+    .social-gym a{margin-right:10px}
+  </style>
+</head>
+<body>
 <!-- NAV -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
@@ -35,6 +52,7 @@
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
     <a class="nav-link" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="videos.html">Videos</a>
     <a class="nav-link" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
@@ -47,9 +65,10 @@
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
+        <!-- Configuraciones: local vs producción -->
         <a id="ing-config"
-           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
+           href="/admin/configuraciones.php"
+           data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
@@ -60,27 +79,151 @@
 
 <main class="container">
   <h1>Videos</h1>
-  <div class="reels" id="reels"></div>
+
+  <!-- Banner desde Configuraciones -->
+  <section id="site-banner" class="card banner" hidden>
+    <p id="banner-text" class="m-0"></p>
+  </section>
+
+  <!-- Redes desde Configuraciones -->
+  <section class="card">
+    <h2>Seguinos</h2>
+    <p class="text-muted m-0">Enlaces cargados automáticamente desde Configuraciones.</p>
+    <p class="social-gym mt-2" id="gym-social"></p>
+  </section>
+
+  <section class="reels" id="reels">
+    <div class="empty">Cargando videos…</div>
+  </section>
 </main>
-<footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
 
 <script>
 (function(){
-  const API='https://TU-APP.onrender.com/api.php?sec=videos&active=1&limit=100';
-  fetch(API).then(r=>r.json()).then(d=>{
-    const box=document.getElementById('reels'); if(!box) return;
-    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto más videos.</div>'; return; }
-    box.innerHTML=d.items.map(v=>{
-      let embed='';
-      if(v.tipo==='youtube'){ const id=yid(v.video_url||''); embed=`<iframe src="https://www.youtube.com/embed/${id}" loading="lazy" allowfullscreen></iframe>`; }
-      else if(v.tipo==='instagram'){ embed=`<iframe src="${escA(v.video_url)}" loading="lazy"></iframe>`; }
-      else { embed=`<video src="${escA(v.video_url)}" controls playsinline preload="metadata"></video>`; }
-      return `<div class="reel">${v.titulo?`<h4>${esc(v.titulo)}</h4>`:''}<div class="frame">${embed}</div></div>`;
-    }).join('');
+  // ===== Endpoints candidatos =====
+  const API_VIDEOS_OPTIONS = [
+    `${location.origin}/api.php?sec=videos&active=1&limit=100`,
+    `/api/videos.php`
+  ];
+  const API_SETTINGS_OPTIONS = [
+    `${location.origin}/api.php?sec=settings`,
+    `${location.origin}/api.php?sec=site_settings`,
+    `${location.origin}/api.php?sec=config`
+  ];
+
+  const box = document.getElementById('reels');
+  const social = document.getElementById('gym-social');
+  const bannerWrap = document.getElementById('site-banner');
+  const bannerText = document.getElementById('banner-text');
+
+  // ===== Cargar videos =====
+  getFirstJSON(API_VIDEOS_OPTIONS).then(d=>{
+    const items = normList(d);
+
+    // Ordenar como en el panel: orden ASC, id DESC
+    items.sort((a,b)=>{
+      const ao = Number(a.orden||0), bo = Number(b.orden||0);
+      if (ao!==bo) return ao-bo;
+      return Number(b.id||0) - Number(a.id||0);
+    });
+
+    if (!items.length){ box.innerHTML = '<div class="empty">Pronto más videos.</div>'; return; }
+    box.innerHTML = items.map(v => card(v)).join('');
+  }).catch(()=>{
+    if (box) box.innerHTML = '<div class="empty">No se pudieron cargar los videos.</div>';
   });
-  function yid(u){try{if(u.includes('youtu.be/'))return u.split('youtu.be/')[1].split(/[?&#]/)[0];const x=new URL(u);if(x.hostname.includes('youtube.com'))return x.searchParams.get('v')||'';}catch(e){}return u;}
+
+  function card(v){
+    const t   = esc(v.titulo||'');
+    const url = String(v.video_url||'');
+    const tp  = (v.tipo||'youtube').toLowerCase();
+    const cover = escA(v.cover_url||'');
+
+    let media = '';
+    if (tp === 'youtube'){
+      const id = yid(url);
+      media = id ? `<div class="frame"><iframe src="https://www.youtube.com/embed/${id}" loading="lazy" allowfullscreen></iframe></div>` : '';
+    } else if (tp === 'mp4'){
+      media = `<div class="frame"><video src="${escA(url)}" controls playsinline preload="metadata"></video></div>`;
+    } else if (tp === 'instagram'){
+      // Evitar X-Frame-Options de Instagram: mostrar cover (si hay) + link
+      const coverEl = cover ? `<img class="cover" src="${cover}" alt="${t}">` : `<div class="cover" aria-hidden="true"></div>`;
+      media = `${coverEl}<div class="act"><a class="btn-ghost" target="_blank" rel="noopener" href="${escA(url)}">Ver en Instagram</a></div>`;
+    } else {
+      media = `<div class="frame"><video src="${escA(url)}" controls playsinline preload="metadata"></video></div>`;
+    }
+
+    return `<article class="reel">${t?`<h4>${t}</h4>`:''}${media}</article>`;
+  }
+
+  // ===== Configuraciones (redes + banner) =====
+  getFirstJSON(API_SETTINGS_OPTIONS).then(cfg=>{
+    if(!cfg) return;
+
+    // Redes
+    const links = [];
+    if (cfg.youtube)   links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.youtube)}">YouTube</a>`);
+    if (cfg.instagram) links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.instagram)}">Instagram</a>`);
+    if (cfg.facebook)  links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.facebook)}">Facebook</a>`);
+    if (links.length && social) social.innerHTML = links.join(' ');
+
+    // Banner
+    if (cfg.texto_banner && bannerWrap && bannerText){
+      bannerText.textContent = String(cfg.texto_banner);
+      bannerWrap.hidden = false;
+    }
+  });
+
+  // ===== Ajustar link de Configuraciones según entorno =====
+  (function(){
+    const a = document.getElementById('ing-config');
+    if (!a) return;
+    const host = (location.hostname||'').toLowerCase();
+    const isProd = host.includes('onrender.com');
+    const prod = a.getAttribute('data-prod') || 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
+    a.href = isProd ? prod : '/admin/configuraciones.php';
+  })();
+
+  // ===== Marcar nav activo =====
+  (function(){
+    const current = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    document.querySelectorAll('.nav-links .nav-link').forEach(a=>{
+      const href = (a.getAttribute('href')||'').toLowerCase();
+      if (href.endsWith(current)) a.classList.add('active');
+    });
+  })();
+
+  // ===== Helpers =====
+  async function getFirstJSON(options){
+    for(const url of options){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const j = await r.json();
+        if (j) return j;
+      }catch(_){}
+    }
+    return (window.__CFG && window.__CFG.settings) || null;
+  }
+  function normList(payload){
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+  function yid(u){
+    try{
+      if(u.includes('youtu.be/')) return u.split('youtu.be/')[1].split(/[?&#]/)[0];
+      const x = new URL(u);
+      if(x.hostname.includes('youtube.com')) return x.searchParams.get('v')||'';
+    }catch(e){}
+    return u;
+  }
   function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
   function escA(s){return String(s||'').replace(/"/g,'&quot;')}
 })();
 </script>
-</body></html>
+</body>
+</html>

@@ -1,21 +1,31 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Ofertas</title>
-<link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/menu.js"></script>
-<style>
-  .offers{display:grid;grid-template-columns:1fr;gap:14px}
-  @media(min-width:720px){.offers{grid-template-columns:repeat(2,1fr)}}
-  .offer{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
-  .offer .img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#0b0d11}
-  .offer .body{padding:12px}
-  .meta{color:#9aa3b2;font-size:12px;margin:6px 0}
-  .price{font-weight:800}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIGHT ACADEMY SCORPIONS | Fotos</title>
+
+  <!-- Estilo base + responsive global -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/responsive.css">
+
+  <!-- JS comunes -->
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/assets/js/menu.js"></script>
+  <script defer src="/assets/js/header.js"></script>
+
+  <style>
+    /* Ajustes propios de esta página (el resto está en styles.css + responsive.css) */
+    .photos{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+    @media(min-width:720px){.photos{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+    .photo-card{border:1px solid var(--c-border);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0))}
+    .photo{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#0b0d11}
+    .body{padding:12px}
+    .title{margin:0}
+    .empty{opacity:.85;padding:12px}
+    .social-gym a{margin-right:10px}
+    .banner{margin-bottom:16px}
+  </style>
 </head>
 <body>
 
@@ -34,15 +44,13 @@
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
-  <!-- Botón hamburguesa -->
   <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">☰</button>
 
-  <!-- Links colapsables -->
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
-    <a class="nav-link" href="fotos.html">Fotos</a>
-    <a class="nav-link" href="videos.html">Videos</a><!-- NUEVO -->
-    <a class="nav-link active" href="ofertas.html">Ofertas</a>
+    <a class="nav-link active" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="videos.html">Videos</a>
+    <a class="nav-link" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
     <a class="nav-link" href="equipo.html">Equipo</a>
@@ -54,11 +62,8 @@
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: local vs producción -->
-        <a id="ing-config"
-           href="/admin/configuraciones.php"
-           data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
-           target="_blank" rel="noopener">Configuraciones</a>
+        <!-- Configuraciones (corrige el typo y usa ruta local en dev) -->
+        <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
 
@@ -67,72 +72,122 @@
 </nav>
 
 <main class="container">
-  <h1>Ofertas</h1>
-  <div class="offers" id="offers"><div class="meta">Cargando ofertas…</div></div>
+  <h1>Fotos</h1>
+
+  <!-- Banner desde Configuraciones (texto_banner) -->
+  <section id="site-banner" class="card banner" hidden>
+    <p id="banner-text" class="m-0"></p>
+  </section>
+
+  <!-- Redes desde Configuraciones -->
+  <section class="card">
+    <h2>Seguinos</h2>
+    <p class="text-muted m-0">Enlaces cargados automáticamente desde Configuraciones.</p>
+    <p class="social-gym mt-2" id="gym-social"></p>
+  </section>
+
+  <!-- Galería -->
+  <section class="photos" id="photos">
+    <div class="empty">Cargando fotos…</div>
+  </section>
 </main>
-<footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
 
 <script>
 (function(){
-  // Endpoint interno (creá /api/ofertas.php si aún no existe)
-  const API = '/api/ofertas.php';
+  // ==== Endpoints ====
+  const API_FOTOS_OPTIONS = [
+    `${location.origin}/api.php?sec=fotos&active=1&limit=200`,
+    `/api/fotos.php`,                                  // alternativo
+    `${location.origin}/api.php?sec=galeria&limit=200` // por si usan otro "sec"
+  ];
 
-  fetch(API, {cache:'no-store'})
-    .then(r => r.json())
-    .then(d => {
-      const box = document.getElementById('offers'); if(!box) return;
-      if (!d || d.ok === false) {
-        box.innerHTML = '<div class="meta">No se pudieron cargar las ofertas.</div>';
-        return;
-      }
-      const items = d.items || d; // por si el endpoint devuelve lista directa
-      if (!items.length) {
-        box.innerHTML = '<div class="meta">Pronto nuevas ofertas.</div>';
-        return;
-      }
-      box.innerHTML = items.map(o => `
-        <div class="offer">
-          ${o.imagen_url ? `<img class="img" src="${escA(o.imagen_url)}" alt="${escA(o.titulo||'')}">` : ''}
-          <div class="body">
-            <h3 class="title">${esc(o.titulo||'')}</h3>
-            ${o.descripcion ? `<p class="meta">${esc(o.descripcion)}</p>` : ''}
-            <div class="meta">
-              ${o.vigente_desde ? `Desde: ${esc(o.vigente_desde)} · ` : ''}
-              ${o.vigente_hasta ? `Hasta: ${esc(o.vigente_hasta)}` : ''}
-            </div>
-            ${o.precio!=null ? `<div class="price">$ ${fmt(o.precio)}</div>` : ''}
-          </div>
-        </div>`
-      ).join('');
-    })
-    .catch(() => {
-      const box = document.getElementById('offers');
-      if (box) box.innerHTML = '<div class="meta">No se pudieron cargar las ofertas.</div>';
+  const API_SETTINGS_OPTIONS = [
+    `${location.origin}/api.php?sec=settings`,
+    `${location.origin}/api.php?sec=site_settings`,
+    `${location.origin}/api.php?sec=config`,
+  ];
+
+  const box = document.getElementById('photos');
+  const social = document.getElementById('gym-social');
+  const bannerWrap = document.getElementById('site-banner');
+  const bannerText = document.getElementById('banner-text');
+
+  // ==== Cargar fotos ====
+  getFirstJSON(API_FOTOS_OPTIONS).then(d=>{
+    const items = normList(d);
+    if(!items.length){ box.innerHTML = '<div class="empty">Pronto nuevas fotos.</div>'; return; }
+
+    // Ordenar como en el panel: orden ASC, id DESC
+    items.sort((a,b)=>{
+      const ao = Number(a.orden||0), bo = Number(b.orden||0);
+      if (ao!==bo) return ao-bo;
+      return Number(b.id||0) - Number(a.id||0);
     });
 
-  // Utils
-  function fmt(n){ n=Number(n||0); return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-  function esc(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
-  function escA(s){ return String(s||'').replace(/"/g,'&quot;'); }
+    box.innerHTML = items.map(f => card(f)).join('');
+  }).catch(()=>{
+    if (box) box.innerHTML = '<div class="empty">No se pudieron cargar las fotos.</div>';
+  });
 
-  // Ajustar link de "Configuraciones" según entorno
-  (function(){
-    const a = document.getElementById('ing-config');
-    if (!a) return;
-    const host = (location.hostname||'').toLowerCase();
-    const isProd = host.includes('onrender.com');
-    const prod = a.getAttribute('data-prod') || 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
-    a.href = isProd ? prod : '/admin/configuraciones.php';
-  })();
+  function card(f){
+    const titulo = esc(f.titulo || '');
+    const url    = escA(f.imagen_url || '');
+    return `
+      <article class="photo-card">
+        ${url ? `<a href="${url}" target="_blank" rel="noopener">
+                   <img class="photo" src="${url}" alt="${titulo}">
+                 </a>` : `<div class="photo" aria-hidden="true"></div>`}
+        <div class="body">
+          ${titulo ? `<h3 class="title">${titulo}</h3>` : ''}
+        </div>
+      </article>`;
+  }
 
-  // Marcar activo según URL (por si se usa en otra página)
-  (function(){
-    const current = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    document.querySelectorAll('.nav-links .nav-link').forEach(a=>{
-      const href = (a.getAttribute('href')||'').toLowerCase();
-      if (href.endsWith(current)) a.classList.add('active');
-    });
-  })();
+  // ==== Configuraciones (redes + banner) ====
+  getFirstJSON(API_SETTINGS_OPTIONS).then(cfg=>{
+    if(!cfg) return;
+
+    // Redes
+    const links = [];
+    if (cfg.youtube)   links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.youtube)}">YouTube</a>`);
+    if (cfg.instagram) links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.instagram)}">Instagram</a>`);
+    if (cfg.facebook)  links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.facebook)}">Facebook</a>`);
+    if (links.length && social) social.innerHTML = links.join(' ');
+
+    // Banner
+    if (cfg.texto_banner && bannerWrap && bannerText){
+      bannerText.textContent = String(cfg.texto_banner);
+      bannerWrap.hidden = false;
+    }
+  });
+
+  // ==== Helpers ====
+  async function getFirstJSON(options){
+    for(const url of options){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const j = await r.json();
+        if (j) return j;
+      }catch(_){/* siguiente opción */}
+    }
+    // Último recurso: config.js podría exponer __CFG
+    return (window.__CFG && window.__CFG.settings) || null;
+  }
+
+  function normList(payload){
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+
+  function esc(s){return String(s).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
+
 })();
 </script>
 </body>

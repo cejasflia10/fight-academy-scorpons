@@ -4,19 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FIGHT ACADEMY SCORPIONS | Kickboxing, Boxeo, K1</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
-  <script defer src="assets/js/config.js"></script>
-  <script defer src="assets/js/motivation.js"></script>
-  <script defer src="assets/js/menu.js"></script>
-    <script defer src="/assets/js/header.js"></script>
 
+  <!-- Estilos base + responsive global -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/responsive.css">
+
+  <!-- JS comunes -->
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/assets/js/motivation.js"></script>
+  <script defer src="/assets/js/menu.js"></script>
+  <script defer src="/assets/js/header.js"></script>
+
+  <!-- Estilos mínimos específicos del home -->
+  <style>
+    .hero{padding-top:22px}
+    .brand-logo{height:38px;width:auto;display:none}
+    .hero-bg{border-radius:18px;overflow:hidden;position:relative;background:linear-gradient(180deg,#12151d,#0e1117);padding:18px}
+    .hero-bg.has-img{background-size:cover;background-position:center}
+    .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.55));pointer-events:none}
+    .hero-inner{position:relative;z-index:1}
+    .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+    @media (min-width:720px){.kpis{grid-template-columns:repeat(4,1fr)}}
+    .kpi{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;text-align:center}
+    .kpi strong{font-size:1.35rem}
+    .section{margin-top:26px}
+    .grid-cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+    .card.link{display:block;border:1px solid var(--c-border);border-radius:14px;padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))}
+    .card .thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#0b0d11;margin-top:8px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{font-size:.9rem;border:1px solid var(--c-border);border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.04)}
+    .subtle{color:#94a3b8}
+    .banner{margin-top:18px;border:1px solid var(--c-border);border-radius:12px;padding:12px;background:rgba(34,197,94,.07)}
+    .section h2{margin-bottom:8px}
+    .section .subtle a{margin-right:12px}
+  </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <img id="brand-logo" class="brand-logo" alt="FIGHT ACADEMY SCORPIONS">
+    <svg id="brand-fallback" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
       <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -35,6 +64,7 @@
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
     <a class="nav-link" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="videos.html">Videos</a>
     <a class="nav-link" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
@@ -47,9 +77,10 @@
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
+        <!-- Configuraciones: local vs producción -->
         <a id="ing-config"
-           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
+           href="/admin/configuraciones.php"
+           data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
@@ -60,67 +91,62 @@
 
 <!-- HERO -->
 <main class="container hero">
-  <h1>Entrená fuerte, entrená inteligente</h1>
-  <p class="lead">Kickboxing · Boxeo · K1 — Programas para todas las edades y niveles. Cultura de disciplina, respeto y progreso.</p>
-
-  <!-- Flash + Animación -->
-  <section class="flash-wrap">
-    <div class="flash"><span id="mot-phrase">Entrená sin excusas</span></div>
-    <div class="fighter-hero">
-      <div class="run-lines"></div>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" fill="none">
-        <defs>
-          <linearGradient id="fg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#22c55e"/>
-            <stop offset="1" stop-color="#14b8a6"/>
-          </linearGradient>
-        </defs>
-        <g class="body" fill="url(#fg)" opacity="0.95">
-          <path d="M90 220c30-20 40-44 54-72 10-22 26-44 46-54 22-12 54-14 78-4 20 8 34 24 46 36 14 14 24 22 40 26 10 2 24 4 32 0 8-4 12-10 14-16 2-6 2-12-2-16-4-6-12-10-18-12 4-2 18-2 26 6 8 6 12 18 10 30-4 16-18 30-34 36-16 6-32 6-50 4-28-4-50-14-78-8-22 4-42 20-64 34-30 18-68 22-100 10-8-2-18-6-20-12-2-6 2-12 10-16 8-4 18-6 30-2z"/>
-          <circle cx="436" cy="128" r="4" fill="#f1f5f9"/>
-        </g>
-      </svg>
+  <section id="hero-bg" class="hero-bg">
+    <div class="hero-inner">
+      <h1 id="hero-title">Entrená fuerte, entrená inteligente</h1>
+      <p id="hero-lead" class="lead">Kickboxing · Boxeo · K1 — Programas para todas las edades y niveles. Cultura de disciplina, respeto y progreso.</p>
+      <div class="kpis">
+        <div class="kpi"><strong>+200</strong><div class="small">Alumnos</div></div>
+        <div class="kpi"><strong>10</strong><div class="small">Clases/semana</div></div>
+        <div class="kpi"><strong>7</strong><div class="small">Profes</div></div>
+        <div class="kpi"><strong>24/7</strong><div class="small">Enfoque</div></div>
+      </div>
+      <div id="home-banner" class="banner" hidden></div>
     </div>
   </section>
 
-  <!-- KPIs -->
-  <div class="kpis">
-    <div class="kpi"><strong>+200</strong><div class="small">Alumnos</div></div>
-    <div class="kpi"><strong>10</strong><div class="small">Clases/semana</div></div>
-    <div class="kpi"><strong>7</strong><div class="small">Profes</div></div>
-    <div class="kpi"><strong>24/7</strong><div class="small">Enfoque</div></div>
-  </div>
-
-  <!-- Secciones -->
+  <!-- ACTIVIDADES (Disciplinas) -->
   <section class="section">
-    <div class="grid">
-      <a class="card" href="disciplinas.html">
+    <h2>Actividades</h2>
+    <p class="subtle">Programas principales del gimnasio.</p>
+    <div id="disc-grid" class="grid-cards">
+      <a class="card link" href="disciplinas.html">
         <h3>Disciplinas</h3>
         <p>K1, Kickboxing, Boxeo, Full Contact y más.</p>
         <span class="more">Ver programas →</span>
       </a>
-      <a class="card" href="fotos.html">
-        <h3>Instalaciones</h3>
-        <p>Ring, sala de fuerza, tatami y equipamiento.</p>
-        <span class="more">Ver galería →</span>
-      </a>
-      <a class="card" href="ofertas.html">
-        <h3>Planes y Ofertas</h3>
-        <p>Matriculación, mensualidades y promos por temporada.</p>
-        <span class="more">Ver precios →</span>
-      </a>
-      <a class="card" href="ventas.html">
-        <h3>Tienda</h3>
-        <p>Guantes, vendas, protectores y más.</p>
-        <span class="more">Ver productos →</span>
-      </a>
     </div>
+
+    <!-- Sublinks/Chips de disciplinas -->
+    <div id="disc-chips" class="chips"></div>
+    <p class="subtle" style="margin-top:8px">
+      <a class="link" href="disciplinas.html">Ver todas las disciplinas →</a>
+    </p>
   </section>
 
-  <!-- Banner -->
-  <div class="banner">
-    <strong>Promo de bienvenida:</strong> 50% OFF en matrícula + clase de prueba sin cargo.
-  </div>
+  <!-- FOTOS -->
+  <section class="section">
+    <h2>Instalaciones</h2>
+    <p class="subtle">Ring, sala de fuerza, tatami y equipamiento.</p>
+    <div id="ph-grid" class="grid-cards"></div>
+    <p class="subtle"><a class="link" href="fotos.html">Ver galería completa →</a></p>
+  </section>
+
+  <!-- OFERTAS -->
+  <section class="section">
+    <h2>Planes y Ofertas</h2>
+    <p class="subtle">Matriculación, mensualidades y promos por temporada.</p>
+    <div id="ofe-grid" class="grid-cards"></div>
+    <p class="subtle"><a class="link" href="ofertas.html">Ver todas las ofertas →</a></p>
+  </section>
+
+  <!-- TIENDA -->
+  <section class="section">
+    <h2>Tienda</h2>
+    <p class="subtle">Guantes, vendas, protectores y más.</p>
+    <div id="prod-grid" class="grid-cards"></div>
+    <p class="subtle"><a class="link" href="ventas.html">Ver todos los productos →</a></p>
+  </section>
 </main>
 
 <!-- FOOTER -->
@@ -128,5 +154,217 @@
   <small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small>
 </footer>
 
+<script>
+(function(){
+  // ===== Endpoints candidatos =====
+  const API_SETTINGS_OPTIONS = [
+    `${location.origin}/api.php?sec=settings`,
+    `${location.origin}/api.php?sec=site_settings`,
+    `${location.origin}/api.php?sec=config`
+  ];
+  const API_DISC_OPTIONS = [
+    `${location.origin}/api.php?sec=disciplinas&active=1&limit=8`,
+    `/api/disciplinas.php`
+  ];
+  const API_FOTOS_OPTIONS = [
+    `${location.origin}/api.php?sec=fotos&active=1&limit=8`,
+    `/api/fotos.php`
+  ];
+  const API_OFE_OPTIONS = [
+    `${location.origin}/api.php?sec=ofertas&active=1&limit=4`,
+    `/api/ofertas.php`
+  ];
+  const API_VENTAS_OPTIONS = [
+    `${location.origin}/api.php?sec=ventas&active=1&limit=4`,
+    `/api/ventas.php`
+  ];
+
+  // ===== Dom refs
+  const brandLogo = document.getElementById('brand-logo');
+  const brandFallback = document.getElementById('brand-fallback');
+  const heroBg = document.getElementById('hero-bg');
+  const homeBanner = document.getElementById('home-banner');
+
+  // ===== Configuraciones
+  getFirstJSON(API_SETTINGS_OPTIONS).then(cfg=>{
+    if(!cfg) return;
+
+    // Logo
+    if (cfg.logo_img) {
+      brandLogo.src = escA(cfg.logo_img);
+      brandLogo.style.display = 'inline-block';
+      brandFallback.style.display = 'none';
+    }
+
+    // Fondo (hero)
+    if (cfg.fondo_img) {
+      heroBg.style.backgroundImage = `url("${escA(cfg.fondo_img)}")`;
+      heroBg.classList.add('has-img');
+    }
+
+    // Banner
+    if (cfg.texto_banner) {
+      homeBanner.textContent = cfg.texto_banner;
+      homeBanner.hidden = false;
+    }
+
+    // Colores de marca opcionales (si los usás en :root)
+    if (cfg.color_principal) {
+      document.documentElement.style.setProperty('--brand', cfg.color_principal);
+    }
+    if (cfg.color_secundario) {
+      document.documentElement.style.setProperty('--brand-2', cfg.color_secundario);
+    }
+  });
+
+  // ===== Disciplinas
+  getFirstJSON(API_DISC_OPTIONS).then(d=>{
+    const list = normList(d)
+      .filter(x => x.activo !== 0 && x.activo !== '0')
+      .sort((a,b)=> (Number(a.orden||0)-Number(b.orden||0)) || (Number(b.id||0)-Number(a.id||0)));
+
+    const grid = document.getElementById('disc-grid');
+    const chips = document.getElementById('disc-chips');
+
+    if (!list.length){
+      grid.insertAdjacentHTML('beforeend', `<div class="subtle">Pronto más disciplinas.</div>`);
+      return;
+    }
+
+    // Render tarjetas (máx 6)
+    list.slice(0,6).forEach(it=>{
+      const t = esc(it.titulo||'');
+      const d = esc(short(it.descripcion||'', 120));
+      const img = it.imagen_url ? `<img class="thumb" src="${escA(it.imagen_url)}" alt="${t}">` : '';
+      grid.insertAdjacentHTML('beforeend', `
+        <a class="card link" href="disciplinas.html#disc-${it.id}">
+          <h3>${t}</h3>
+          ${d ? `<p>${d}</p>` : ``}
+          ${img}
+          <span class="more">Ver programa →</span>
+        </a>
+      `);
+    });
+
+    // Chips con sublinks a cada disciplina
+    chips.innerHTML = list.map(it => `
+      <a class="chip" href="disciplinas.html#disc-${it.id}" title="${escA(it.titulo||'')}">${esc(it.titulo||'')}</a>
+    `).join('');
+  });
+
+  // ===== Fotos (preview)
+  getFirstJSON(API_FOTOS_OPTIONS).then(d=>{
+    const list = normList(d)
+      .filter(x => x.imagen_url)
+      .sort((a,b)=> (Number(a.orden||0)-Number(b.orden||0)) || (Number(b.id||0)-Number(a.id||0)));
+
+    const grid = document.getElementById('ph-grid');
+    if (!grid) return;
+    if (!list.length){ grid.innerHTML = `<div class="subtle">Pronto nuevas fotos.</div>`; return; }
+
+    grid.innerHTML = list.slice(0,6).map(ph=>{
+      const t = esc(ph.titulo||'');
+      return `
+        <a class="card link" href="fotos.html" title="${t}">
+          ${ph.imagen_url ? `<img class="thumb" src="${escA(ph.imagen_url)}" alt="${t||'Foto del gimnasio'}">` : ``}
+          ${t ? `<p class="subtle">${t}</p>` : ``}
+        </a>
+      `;
+    }).join('');
+  });
+
+  // ===== Ofertas (preview)
+  getFirstJSON(API_OFE_OPTIONS).then(d=>{
+    const list = normList(d)
+      .filter(x => x.activo !== 0 && x.activo !== '0')
+      .sort((a,b)=> (Number(a.orden||0)-Number(b.orden||0)) || (Number(b.id||0)-Number(a.id||0)));
+
+    const grid = document.getElementById('ofe-grid');
+    if (!grid) return;
+    if (!list.length){ grid.innerHTML = `<div class="subtle">No hay ofertas por el momento.</div>`; return; }
+
+    grid.innerHTML = list.slice(0,3).map(o=>{
+      const t = esc(o.titulo||'');
+      const d = esc(short(o.descripcion||'', 120));
+      const price = (o.precio!=null) ? `<div class="subtle"><strong>$ ${fmt(o.precio)}</strong></div>` : '';
+      return `
+        <a class="card link" href="ofertas.html#ofe-${o.id}">
+          <h3>${t}</h3>
+          ${d ? `<p>${d}</p>` : ``}
+          ${o.imagen_url ? `<img class="thumb" src="${escA(o.imagen_url)}" alt="${t}">` : ``}
+          ${price}
+          <span class="more">Ver detalle →</span>
+        </a>
+      `;
+    }).join('');
+  });
+
+  // ===== Productos (preview)
+  getFirstJSON(API_VENTAS_OPTIONS).then(d=>{
+    const list = normList(d)
+      .filter(x => x.activo !== 0 && x.activo !== '0')
+      .sort((a,b)=> (Number(a.orden||0)-Number(b.orden||0)) || (Number(b.id||0)-Number(a.id||0)));
+
+    const grid = document.getElementById('prod-grid');
+    if (!grid) return;
+    if (!list.length){ grid.innerHTML = `<div class="subtle">Pronto más productos.</div>`; return; }
+
+    grid.innerHTML = list.slice(0,4).map(p=>{
+      const t = esc(p.nombre||'');
+      const d = esc(short(p.descripcion||'', 90));
+      const price = (p.precio!=null) ? `<div class="subtle"><strong>$ ${fmt(p.precio)}</strong></div>` : '';
+      return `
+        <a class="card link" href="ventas.html#prod-${p.id}">
+          <h3>${t}</h3>
+          ${d ? `<p>${d}</p>` : ``}
+          ${p.imagen_url ? `<img class="thumb" src="${escA(p.imagen_url)}" alt="${t}">` : ``}
+          ${price}
+          <span class="more">Ver producto →</span>
+        </a>
+      `;
+    }).join('');
+  });
+
+  // ===== Ajustar link de Configuraciones según entorno
+  (function(){
+    const a = document.getElementById('ing-config');
+    if (!a) return;
+    const host = (location.hostname||'').toLowerCase();
+    const isProd = host.includes('onrender.com');
+    const prod = a.getAttribute('data-prod') || 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
+    a.href = isProd ? prod : '/admin/configuraciones.php';
+  })();
+
+  // ===== Helpers
+  async function getFirstJSON(options){
+    for(const url of options){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const j = await r.json();
+        if (j) return j;
+      }catch(_){}
+    }
+    return (window.__CFG && window.__CFG.settings) || null;
+  }
+  function normList(payload){
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+  function short(s, n){
+    s = String(s||'').trim();
+    if (s.length <= n) return s;
+    const cut = s.slice(0, n);
+    const i = Math.max(cut.lastIndexOf(' '), cut.lastIndexOf(','));
+    return (i>40 ? cut.slice(0,i) : cut) + '…';
+  }
+  function fmt(n){ n=Number(n||0); return n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function esc(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+  function escA(s){ return String(s||'').replace(/"/g,'&quot;'); }
+})();
+</script>
 </body>
 </html>

@@ -1,60 +1,71 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fotos | FIGHT ACADEMY SCORPIONS</title>
-<link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIGHT ACADEMY SCORPIONS | Fotos</title>
 
-<!-- Estilos mínimos para la galería (si querés, luego pásalos a styles.css) -->
-<style>
-  .page { max-width:1100px; margin:24px auto; padding:0 16px; }
-  .gallery { display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
-  .ph-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:12px; overflow:hidden }
-  .ph-card img { width:100%; height:220px; object-fit:cover; display:block }
-  .ph-card figcaption { padding:8px 10px; font-size:.95rem; color:#cbd5e1 }
-  .muted{color:#94a3b8} .err{color:#ef4444}
-</style>
+  <!-- Estilos base + responsive global -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <link rel="stylesheet" href="/assets/css/responsive.css">
 
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/motivation.js"></script>
-<script defer src="assets/js/menu.js"></script>
-<script defer src="assets/js/fotos.js"></script>
+  <!-- JS comunes -->
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/assets/js/menu.js"></script>
+  <script defer src="/assets/js/header.js"></script>
+
+  <!-- Estilos específicos de la galería -->
+  <style>
+    .page{max-width:1100px;margin:24px auto;padding:0 16px}
+    .gallery{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+    .ph{border:1px solid var(--c-border);border-radius:12px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0))}
+    .ph img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#0b0d11}
+    .ph figcaption{padding:8px 10px;font-size:.95rem;color:#cbd5e1}
+    .muted{color:#94a3b8}.empty{opacity:.85}
+    .banner{margin-bottom:16px}
+    .social-gym a{margin-right:10px}
+  </style>
 </head>
-<script defer src="/assets/js/header.js"></script>
-
 <body>
 
-<!-- NAV (idéntico al index) -->
+<!-- NAV -->
 <nav class="site-nav">
   <a class="brand" href="index.html" aria-label="Inicio">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l3 6 6 .9-4.5 4.2 1 6.9L12 18l-5.5 3 1-6.9L3 9.9 9 9z" stroke="url(#g)" stroke-width="1.5"/>
-      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#14b8a6"/>
-      </linearGradient></defs>
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22c55e"/>
+          <stop offset="1" stop-color="#14b8a6"/>
+        </linearGradient>
+      </defs>
     </svg>
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
+  <!-- Botón hamburguesa -->
   <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">☰</button>
 
+  <!-- Links colapsables -->
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
-    <a class="nav-link active" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="fotos.html">Fotos</a>
+    <a class="nav-link" href="videos.html">Videos</a>
     <a class="nav-link" href="ofertas.html">Ofertas</a>
     <a class="nav-link" href="promociones.html">Promociones</a>
     <a class="nav-link" href="ventas.html">Ventas</a>
     <a class="nav-link" href="equipo.html">Equipo</a>
 
+    <!-- Submenú Ingresos -->
     <div class="menu" id="menu-ingresos">
       <button class="toggle" aria-expanded="false">Ingresos ▾</button>
       <div class="submenu" hidden>
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
+        <!-- Configuraciones: local vs producción -->
         <a id="ing-config"
-           href="admin/configuraciones.php"
+           href="/admin/configuraciones.php"
            data-prod="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
            target="_blank" rel="noopener">Configuraciones</a>
       </div>
@@ -66,7 +77,18 @@
 
 <main class="page">
   <h1>Fotos</h1>
-  <p class="muted">Galería de imágenes del gimnasio y las clases.</p>
+
+  <!-- Banner desde Configuraciones -->
+  <section id="site-banner" class="card banner" hidden>
+    <p id="banner-text" class="m-0"></p>
+  </section>
+
+  <!-- Redes desde Configuraciones -->
+  <section class="card">
+    <h2>Seguinos</h2>
+    <p class="text-muted m-0">Enlaces cargados automáticamente desde Configuraciones.</p>
+    <p class="social-gym mt-2" id="gym-social"></p>
+  </section>
 
   <div id="gallery" class="gallery">
     <p class="muted">Cargando fotos…</p>
@@ -75,15 +97,108 @@
 
 <footer><small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small></footer>
 
-<!-- Ajuste del enlace de Configuraciones según entorno -->
 <script>
-(function() {
-  const a = document.getElementById('ing-config');
-  if (!a) return;
-  const host = (location.hostname || '').toLowerCase();
-  const isLocal = host === 'localhost' || host === '127.0.0.1';
-  const prodUrl = a.getAttribute('data-prod');
-  a.href = (!isLocal && prodUrl) ? prodUrl : 'admin/configuraciones.php';
+(function(){
+  // ===== Endpoints candidatos =====
+  const API_FOTOS_OPTIONS = [
+    `${location.origin}/api.php?sec=fotos&active=1&limit=200`,
+    `/api/fotos.php`
+  ];
+  const API_SETTINGS_OPTIONS = [
+    `${location.origin}/api.php?sec=settings`,
+    `${location.origin}/api.php?sec=site_settings`,
+    `${location.origin}/api.php?sec=config`
+  ];
+
+  const gal = document.getElementById('gallery');
+  const social = document.getElementById('gym-social');
+  const bannerWrap = document.getElementById('site-banner');
+  const bannerText = document.getElementById('banner-text');
+
+  // ===== Cargar fotos =====
+  getFirstJSON(API_FOTOS_OPTIONS).then(d=>{
+    const items = normList(d)
+      .filter(x => x.imagen_url) // solo con imagen
+      .sort((a,b)=>{
+        const ao = Number(a.orden||0), bo = Number(b.orden||0);
+        if (ao!==bo) return ao-bo;
+        return Number(b.id||0) - Number(a.id||0);
+      });
+
+    if (!items.length){ gal.innerHTML = '<p class="empty">Pronto nuevas fotos.</p>'; return; }
+    gal.innerHTML = items.map(ph => fig(ph)).join('');
+  }).catch(()=>{
+    gal.innerHTML = '<p class="empty">No se pudieron cargar las fotos.</p>';
+  });
+
+  function fig(ph){
+    const t = esc(ph.titulo || '');
+    const u = escA(ph.imagen_url || '');
+    return `
+      <figure class="ph">
+        <img loading="lazy" src="${u}" alt="${t || 'Foto del gimnasio'}">
+        ${t ? `<figcaption>${t}</figcaption>` : ``}
+      </figure>`;
+  }
+
+  // ===== Configuraciones (redes + banner) =====
+  getFirstJSON(API_SETTINGS_OPTIONS).then(cfg=>{
+    if(!cfg) return;
+
+    // Redes
+    const links = [];
+    if (cfg.youtube)   links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.youtube)}">YouTube</a>`);
+    if (cfg.instagram) links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.instagram)}">Instagram</a>`);
+    if (cfg.facebook)  links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.facebook)}">Facebook</a>`);
+    if (links.length && social) social.innerHTML = links.join(' ');
+
+    // Banner
+    if (cfg.texto_banner && bannerWrap && bannerText){
+      bannerText.textContent = String(cfg.texto_banner);
+      bannerWrap.hidden = false;
+    }
+  });
+
+  // ===== Ajustar link de Configuraciones según entorno =====
+  (function(){
+    const a = document.getElementById('ing-config');
+    if (!a) return;
+    const host = (location.hostname||'').toLowerCase();
+    const isProd = host.includes('onrender.com');
+    const prod = a.getAttribute('data-prod') || 'https://fight-academy-scorpons.onrender.com/admin/configuraciones.php';
+    a.href = isProd ? prod : '/admin/configuraciones.php';
+  })();
+
+  // ===== Marcar nav activo =====
+  (function(){
+    const current = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    document.querySelectorAll('.nav-links .nav-link').forEach(a=>{
+      const href = (a.getAttribute('href')||'').toLowerCase();
+      if (href.endsWith(current)) a.classList.add('active');
+    });
+  })();
+
+  // ===== Helpers =====
+  async function getFirstJSON(options){
+    for(const url of options){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const j = await r.json();
+        if (j) return j;
+      }catch(_){}
+    }
+    return (window.__CFG && window.__CFG.settings) || null;
+  }
+  function normList(payload){
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escA(s){return String(s||'').replace(/"/g,'&quot;')}
 })();
 </script>
 </body>

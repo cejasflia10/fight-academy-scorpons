@@ -1,21 +1,37 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FIGHT ACADEMY SCORPIONS | Equipo</title>
-<link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/config.js"></script>
-<script defer src="assets/js/menu.js"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIGHT ACADEMY SCORPIONS | Equipo</title>
+
+  <!-- Estilos del sitio -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <!-- Estilo responsive global -->
+  <link rel="stylesheet" href="/assets/css/responsive.css">
+
+  <!-- JS existentes -->
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/assets/js/menu.js"></script>
   <script defer src="/assets/js/header.js"></script>
 
-<style>
-  .team{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-  @media(min-width:720px){.team{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
-  .member{border:1px solid #1b1f27;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#111318,#0d0f13)}
-  .member .ph{aspect-ratio:1/1;background:#0b0d11}
-  .member .body{padding:12px}
-  .member h3{margin:0 0 6px}
-  .member .role{color:#9aa3b2;font-size:12px;margin-bottom:8px}
-</style>
-</head><body>
+  <style>
+    /* Ajustes propios de esta página (lo demás viene de styles + responsive) */
+    .team-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+    @media(min-width:720px){.team-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}}
+    .member{border:1px solid var(--c-border);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0))}
+    .member .photo{width:100%;aspect-ratio:1/1;object-fit:cover;background:#0b0d11}
+    .member .body{padding:14px}
+    .member h3{margin:0 0 4px}
+    .member .role{font-size:.9rem;opacity:.85;margin-bottom:8px}
+    .member .bio{font-size:.95rem;line-height:1.45}
+    .member .meta{margin-top:10px}
+    .member .meta a{margin-right:10px}
+    .empty{opacity:.85;padding:12px}
+    .social-gym a{margin-right:10px}
+  </style>
+</head>
+<body>
 
 <!-- NAV -->
 <nav class="site-nav">
@@ -32,10 +48,8 @@
     <span>FIGHT ACADEMY SCORPIONS</span>
   </a>
 
-  <!-- Botón hamburguesa -->
   <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">☰</button>
 
-  <!-- Links colapsables -->
   <div id="nav-links" class="nav-links">
     <a class="nav-link" href="disciplinas.html">Disciplinas</a>
     <a class="nav-link" href="fotos.html">Fotos</a>
@@ -44,17 +58,13 @@
     <a class="nav-link" href="ventas.html">Ventas</a>
     <a class="nav-link" href="equipo.html">Equipo</a>
 
-    <!-- Submenú Ingresos -->
     <div class="menu" id="menu-ingresos">
       <button class="toggle" aria-expanded="false">Ingresos ▾</button>
       <div class="submenu" hidden>
         <a href="https://multi-gimnasio-51bq.onrender.com/login.php" target="_blank" rel="noopener">App (General)</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/cliente_acceso.php" target="_blank" rel="noopener">Ingreso Clientes</a>
         <a href="https://multi-gimnasio-51bq.onrender.com/login_profesor.php" target="_blank" rel="noopener">Ingreso Profesores</a>
-        <!-- Configuraciones: URL ABSOLUTA CORRECTA -->
-        <a id="ing-config"
-           href="https://fight-academy-scorpons.onrender.com/admin/configuraciones.php"
-           target="_blank" rel="noopener">Configuraciones</a>
+        <a id="ing-config" href="/admin/configuraciones.php" target="_blank" rel="noopener">Configuraciones</a>
       </div>
     </div>
 
@@ -64,29 +74,104 @@
 
 <main class="container">
   <h1>Nuestro Equipo</h1>
-  <div class="team" id="team"></div>
+
+  <!-- Redes del gimnasio desde Configuraciones -->
+  <section class="card">
+    <h2>Seguinos</h2>
+    <p class="text-muted m-0">Estos enlaces se cargan automáticamente desde Configuraciones.</p>
+    <p class="social-gym mt-2" id="gym-social"></p>
+  </section>
+
+  <!-- Listado de profesores -->
+  <section class="team-grid" id="team">
+    <!-- Fallback visible si todavía no llega la API -->
+    <div class="empty">Cargando el equipo…</div>
+  </section>
 </main>
-<footer><small>© 2025 FIGHT ACADEMY SCORPIONS</small></footer>
+
+<footer>
+  <small>© 2025 FIGHT ACADEMY SCORPIONS — San Luis, Argentina.</small>
+</footer>
 
 <script>
 (function(){
-  const API='https://TU-APP.onrender.com/api.php?sec=equipo&active=1&limit=100';
-  fetch(API).then(r=>r.json()).then(d=>{
-    const box=document.getElementById('team'); if(!box) return;
-    if(!d.items || !d.items.length){ box.innerHTML='<div class="item">Pronto presentamos al equipo.</div>'; return; }
-    box.innerHTML=d.items.map(m=>`
-      <div class="member">
-        ${m.foto_url?`<img class="ph" src="${escA(m.foto_url)}" alt="${escA(m.nombre||'')}">`:''}
+  const API_EQUIPO = `${location.origin}/api.php?sec=equipo&active=1&limit=100`;
+  const API_SETTINGS_OPTIONS = [
+    `${location.origin}/api.php?sec=settings`,
+    `${location.origin}/api.php?sec=site_settings`,
+    `${location.origin}/api.php?sec=config`,
+  ];
+
+  const box = document.getElementById('team');
+  const gymSocial = document.getElementById('gym-social');
+
+  // ===== Equipo: fotos + rol + bio (reseña) =====
+  fetch(API_EQUIPO, {cache:'no-store'})
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => {
+      const items = (d && (d.items || d.data || d)) || [];
+      if (!Array.isArray(items) || items.length === 0) {
+        box.innerHTML = '<div class="empty">Pronto presentamos al equipo.</div>';
+        return;
+      }
+      // Ordenar por "orden ASC, id DESC" si existe
+      items.sort((a,b)=>{
+        const ao = Number(a.orden||0), bo = Number(b.orden||0);
+        if (ao!==bo) return ao-bo;
+        return Number(b.id||0) - Number(a.id||0);
+      });
+      box.innerHTML = items.map(m => card(m)).join('');
+    })
+    .catch(()=>{ box.innerHTML = '<div class="empty">No se pudo cargar el equipo.</div>'; });
+
+  function card(m){
+    const nombre = esc(m.nombre||'');
+    const rol    = esc(m.rol||'');
+    const bio    = esc(m.bio||''); // reseña de su carrera
+    const foto   = escA(m.foto_url||'');
+    const insta  = escA(m.instagram||'');
+    return `
+      <article class="member" id="m-${m.id||''}">
+        ${foto ? `<img class="photo" src="${foto}" alt="${nombre}">` : `<div class="photo" aria-hidden="true"></div>`}
         <div class="body">
-          <h3>${esc(m.nombre||'')}</h3>
-          ${m.rol?`<div class="role">${esc(m.rol)}</div>`:''}
-          ${m.bio?`<p>${esc(m.bio)}</p>`:''}
-          ${m.instagram?`<div class="meta"><a class="link" href="${escA(m.instagram)}" target="_blank" rel="noopener">Instagram</a></div>`:''}
+          <h3>${nombre}</h3>
+          ${rol ? `<div class="role">${rol}</div>` : ''}
+          ${bio ? `<p class="bio">${bio}</p>` : ''}
+          <div class="meta">
+            ${insta ? `<a class="btn-ghost" target="_blank" rel="noopener" href="${insta}">Instagram</a>` : ''}
+          </div>
         </div>
-      </div>`).join('');
+      </article>`;
+  }
+
+  // ===== Redes del gimnasio desde Configuraciones =====
+  getSettings().then(cfg=>{
+    if(!cfg) return;
+    const links = [];
+    if (cfg.youtube)   links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.youtube)}">YouTube</a>`);
+    if (cfg.instagram) links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.instagram)}">Instagram</a>`);
+    if (cfg.facebook)  links.push(`<a class="btn-ghost" target="_blank" rel="noopener" href="${escA(cfg.facebook)}">Facebook</a>`);
+    if (links.length) gymsocialHTML(links.join(' '));
   });
-  function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+
+  function gymsocialHTML(html){ if(gymSocial) gymSocial.innerHTML = html; }
+
+  async function getSettings(){
+    for(const url of API_SETTINGS_OPTIONS){
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(!r.ok) continue;
+        const j = await r.json();
+        return (j && (j.items?.[0] || j.data || j)) || null;
+      }catch(_){}
+    }
+    return (window.__CFG && window.__CFG.settings) || null;
+  }
+
+  // helpers XSS-safe
+  function esc(s){return String(s).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
   function escA(s){return String(s||'').replace(/"/g,'&quot;')}
 })();
 </script>
-</body></html>
+</body>
+</html>
