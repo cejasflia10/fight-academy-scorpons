@@ -20,7 +20,6 @@ if (!function_exists('h')) {
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
-
 // Helpers seguros para arrays/filas
 if (!function_exists('arr_get')) {
   function arr_get($a, $k, $d = '') {
@@ -28,7 +27,6 @@ if (!function_exists('arr_get')) {
   }
 }
 if (!function_exists('first_of')) {
-  // Devuelve el primer campo existente/no vacío de una fila
   function first_of(array $row, array $keys, $default = '') {
     foreach ($keys as $k) {
       if (array_key_exists($k, $row) && $row[$k] !== null && $row[$k] !== '') {
@@ -52,28 +50,30 @@ if (!function_exists('envv')) {
   }
 }
 
-// Subir ARCHIVO (mismo nombre para file y texto)
+// Subir ARCHIVO (mismo nombre para file y texto) — **prioriza URL**
 if (!function_exists('up_or_url')) {
   function up_or_url($inputName, $fallback=''){
+    $url = trim($_POST[$inputName] ?? '');
+    if ($url !== '') return $url; // preferir URL (Cloudinary)
+
     if (!empty($_FILES[$inputName]['name'])) {
       $dir = __DIR__ . '/../uploads';
       if (!is_dir($dir)) @mkdir($dir, 0775, true);
       $fn = time().'_'.preg_replace('/[^a-zA-Z0-9._-]/','_', $_FILES[$inputName]['name']);
       $dest = $dir.'/'.$fn;
       if (@move_uploaded_file($_FILES[$inputName]['tmp_name'], $dest)) {
-        return '/uploads/'.$fn;
+        return '/uploads/'.$fn; // efímero en Render
       }
     }
-    return trim($_POST[$inputName] ?? $fallback);
+    return $fallback;
   }
 }
 
-// Subir ARCHIVO (campo archivo distinto de campo URL) – preferir URL si viene
+// Subir ARCHIVO (campo archivo distinto de campo URL) – ya prioriza URL
 if (!function_exists('up_or_url2')) {
   function up_or_url2($fileField, $urlField, $fallback=''){
     $url = trim($_POST[$urlField] ?? '');
-    if ($url !== '') return $url; // preferir URL si está
-
+    if ($url !== '') return $url;
     if (!empty($_FILES[$fileField]['name'])) {
       $dir = __DIR__ . '/../uploads';
       if (!is_dir($dir)) @mkdir($dir, 0775, true);
@@ -124,6 +124,20 @@ if (!function_exists('stmt_or_err')) {
     $stmt = @$conexion->prepare($sql);
     if (!$stmt) { $err = $conexion->error ?: 'prepare() falló'; return false; }
     return $stmt;
+  }
+}
+// fetch genérico por id
+if (!function_exists('fetch_by_id')) {
+  function fetch_by_id($tabla, $id){
+    global $conexion;
+    $stmt = @$conexion->prepare("SELECT * FROM `$tabla` WHERE id=? LIMIT 1");
+    if(!$stmt) return null;
+    $stmt->bind_param('i',$id);
+    if (!$stmt->execute()) { $stmt->close(); return null; }
+    $res = $stmt->get_result();
+    $row = $res? $res->fetch_assoc() : null;
+    $stmt->close();
+    return $row;
   }
 }
 
@@ -289,225 +303,210 @@ $CLD_PRESET = envv(['CLOUDINARY_UNSIGNED_PRESET','CLD_UPLOAD_PRESET']);
 if ($CLD_PRESET==='') $CLD_PRESET = $data['cld_upload_preset'] ?? '';
 $CLD_FOLDER = envv(['CLOUDINARY_FOLDER']) ?: 'scorpions';
 
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='config') {
-  $color_principal  = trim($_POST['color_principal'] ?? '');
-  $color_secundario = trim($_POST['color_secundario'] ?? '');
-  $fondo_img        = trim($_POST['fondo_img'] ?? '');
-  $logo_img         = trim($_POST['logo_img'] ?? '');
-  $texto_banner     = trim($_POST['texto_banner'] ?? '');
-  $youtube          = trim($_POST['youtube'] ?? '');
-  $instagram        = trim($_POST['instagram'] ?? '');
-  $facebook         = trim($_POST['facebook'] ?? '');
-  $google_maps      = trim($_POST['google_maps'] ?? '');
-  $cld_cloud_name   = trim($_POST['cld_cloud_name'] ?? '');
-  $cld_upload_preset= trim($_POST['cld_upload_preset'] ?? '');
+// ==================== CRUD: guardar ====================
+if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST') {
+  $form = $_POST['__form'] ?? '';
+  if ($form === 'config') {
+    $color_principal  = trim($_POST['color_principal'] ?? '');
+    $color_secundario = trim($_POST['color_secundario'] ?? '');
+    $fondo_img        = trim($_POST['fondo_img'] ?? '');
+    $logo_img         = trim($_POST['logo_img'] ?? '');
+    $texto_banner     = trim($_POST['texto_banner'] ?? '');
+    $youtube          = trim($_POST['youtube'] ?? '');
+    $instagram        = trim($_POST['instagram'] ?? '');
+    $facebook         = trim($_POST['facebook'] ?? '');
+    $google_maps      = trim($_POST['google_maps'] ?? '');
+    $cld_cloud_name   = trim($_POST['cld_cloud_name'] ?? '');
+    $cld_upload_preset= trim($_POST['cld_upload_preset'] ?? '');
 
-  $err = '';
-  $stmt = stmt_or_err("
-    INSERT INTO site_settings
-      (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps,cld_cloud_name,cld_upload_preset)
-    VALUES (1,?,?,?,?,?,?,?,?,?,?,?)
-    ON DUPLICATE KEY UPDATE
-      color_principal=VALUES(color_principal),
-      color_secundario=VALUES(color_secundario),
-      fondo_img=VALUES(fondo_img),
-      logo_img=VALUES(logo_img),
-      texto_banner=VALUES(texto_banner),
-      youtube=VALUES(youtube),
-      instagram=VALUES(instagram),
-      facebook=VALUES(facebook),
-      google_maps=VALUES(google_maps),
-      cld_cloud_name=VALUES(cld_cloud_name),
-      cld_upload_preset=VALUES(cld_upload_preset)
-  ", $err);
+    $err = '';
+    $stmt = stmt_or_err("
+      INSERT INTO site_settings
+        (id,color_principal,color_secundario,fondo_img,logo_img,texto_banner,youtube,instagram,facebook,google_maps,cld_cloud_name,cld_upload_preset)
+      VALUES (1,?,?,?,?,?,?,?,?,?,?,?)
+      ON DUPLICATE KEY UPDATE
+        color_principal=VALUES(color_principal),
+        color_secundario=VALUES(color_secundario),
+        fondo_img=VALUES(fondo_img),
+        logo_img=VALUES(logo_img),
+        texto_banner=VALUES(texto_banner),
+        youtube=VALUES(youtube),
+        instagram=VALUES(instagram),
+        facebook=VALUES(facebook),
+        google_maps=VALUES(google_maps),
+        cld_cloud_name=VALUES(cld_cloud_name),
+        cld_upload_preset=VALUES(cld_upload_preset)
+    ", $err);
 
-  if ($stmt) {
-    $stmt->bind_param(
-      'sssssssssss',
-      $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
-      $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
-    );
-    $ok = $stmt->execute();
-    $msg_cfg = $ok ? '✅ Configuraciones guardadas' : ('❌ Error al guardar: '.$stmt->error);
-    $stmt->close();
-  } else {
-    $msg_cfg = '❌ Error SQL (config): '.$err;
+    if ($stmt) {
+      $stmt->bind_param(
+        'sssssssssss',
+        $color_principal,$color_secundario,$fondo_img,$logo_img,$texto_banner,
+        $youtube,$instagram,$facebook,$google_maps,$cld_cloud_name,$cld_upload_preset
+      );
+      $ok = $stmt->execute();
+      $msg_cfg = $ok ? '✅ Configuraciones guardadas' : ('❌ Error al guardar: '.$stmt->error);
+      $stmt->close();
+    } else {
+      $msg_cfg = '❌ Error SQL (config): '.$err;
+    }
+
+    $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
+    $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
+    $CLD_NAME   = envv(['CLOUDINARY_CLOUD_NAME','CLD_CLOUD_NAME']) ?: ($data['cld_cloud_name'] ?? '');
+    $CLD_PRESET = envv(['CLOUDINARY_UNSIGNED_PRESET','CLD_UPLOAD_PRESET']) ?: ($data['cld_upload_preset'] ?? '');
+    $CLD_FOLDER = envv(['CLOUDINARY_FOLDER']) ?: 'scorpions';
   }
 
-  $res  = $conexion->query("SELECT * FROM site_settings WHERE id=1");
-  $data = $res && $res->num_rows ? $res->fetch_assoc() : [];
+  // Disciplinas
+  if ($form === 'disciplinas') {
+    $id=(int)($_POST['id']??0);
+    $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
+    $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
+    $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
-  // refrescar vars
-  $CLD_NAME   = envv(['CLOUDINARY_CLOUD_NAME','CLD_CLOUD_NAME']) ?: ($data['cld_cloud_name'] ?? '');
-  $CLD_PRESET = envv(['CLOUDINARY_UNSIGNED_PRESET','CLD_UPLOAD_PRESET']) ?: ($data['cld_upload_preset'] ?? '');
-  $CLD_FOLDER = envv(['CLOUDINARY_FOLDER']) ?: 'scorpions';
-}
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE disciplinas SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_disc='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO disciplinas (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_disc='❌ Error SQL: '.$err; }
+    }
+  }
 
-// ==================== Disciplinas ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='disciplinas') {
-  $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
-  $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+  // Fotos
+  if ($form === 'fotos') {
+    $id=(int)($_POST['id']??0);
+    $titulo=$_POST['titulo']??''; $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
+    $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
 
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE disciplinas SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_disc='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO disciplinas (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_disc=$ok?'✅ Disciplina guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_disc='❌ Error SQL: '.$err; }
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE fotos SET titulo=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('ssiii',$titulo,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_fotos='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO fotos (titulo,imagen_url,orden,activo) VALUES (?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('ssii',$titulo,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_fotos='❌ Error SQL: '.$err; }
+    }
+  }
+
+  // Videos
+  if ($form === 'videos') {
+    $id     =(int)($_POST['id']??0);
+    $titulo = $_POST['titulo']??'';
+    $tipo   = $_POST['tipo']??'youtube';
+    $video  = up_or_url2('video_file','video_url', $_POST['video_url']??'');
+    $cover  = up_or_url('cover_url', $_POST['cover_url']??'');
+    $orden  = (int)($_POST['orden']??0);
+    $activo = isset($_POST['activo'])?1:0;
+
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE videos SET titulo=?, video_url=?, tipo=?, cover_url=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('ssssiii',$titulo,$video,$tipo,$cover,$orden,$activo,$id); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_videos='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO videos (titulo,video_url,tipo,cover_url,orden,activo) VALUES (?,?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('ssssii',$titulo,$video,$tipo,$cover,$orden,$activo); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_videos='❌ Error SQL: '.$err; }
+    }
+  }
+
+  // Ofertas
+  if ($form === 'ofertas') {
+    $id=(int)($_POST['id']??0);
+    $titulo=$_POST['titulo']??'';
+    $descripcion=$_POST['descripcion']??'';
+    $precio=(float)($_POST['precio']??0);
+    $desde=$_POST['vigente_desde']??null;
+    $hasta=$_POST['vigente_hasta']??null;
+    $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
+    $orden=(int)($_POST['orden']??0);
+    $activo=isset($_POST['activo'])?1:0;
+
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("
+        UPDATE ofertas
+           SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
+         WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_ofe='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("
+        INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo)
+        VALUES (?,?,?,?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_ofe='❌ Error SQL: '.$err; }
+    }
+  }
+
+  // Promociones
+  if ($form === 'promociones') {
+    $id=(int)($_POST['id']??0);
+    $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
+    $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
+    $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE promociones SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_promo='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO promociones (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_promo='❌ Error SQL: '.$err; }
+    }
+  }
+
+  // Ventas
+  if ($form === 'ventas') {
+    $id=(int)($_POST['id']??0);
+    $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
+    $precio=(float)($_POST['precio']??0); $stock=(int)($_POST['stock']??0);
+    $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
+    $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_ven='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_ven='❌ Error SQL: '.$err; }
+    }
+  }
+
+  // Equipo
+  if ($form === 'equipo') {
+    $id=(int)($_POST['id']??0);
+    $nombre=$_POST['nombre']??''; $rol=$_POST['rol']??''; $bio=$_POST['bio']??'';
+    $foto=up_or_url('foto_url', $_POST['foto_url']??''); $insta=$_POST['instagram']??'';
+    $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
+
+    if ($id>0){
+      $err=''; $stmt=stmt_or_err("UPDATE equipo SET nombre=?, rol=?, bio=?, foto_url=?, instagram=?, orden=?, activo=? WHERE id=?", $err);
+      if ($stmt){ $stmt->bind_param('sssssiii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo,$id); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_eq='❌ Error SQL: '.$err; }
+    } else {
+      $err=''; $stmt=stmt_or_err("INSERT INTO equipo (nombre,rol,bio,foto_url,instagram,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
+      if ($stmt){ $stmt->bind_param('sssssii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
+      else { $msg_eq='❌ Error SQL: '.$err; }
+    }
   }
 }
-if ($db_ok && isset($_GET['del_disc'])) {
-  @$conexion->query("DELETE FROM disciplinas WHERE id=".(int)$_GET['del_disc']);
-  $msg_disc='🗑️ Disciplina eliminada';
-}
 
-// ==================== Fotos ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='fotos') {
-  $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??''; $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE fotos SET titulo=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('ssiii',$titulo,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_fotos='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO fotos (titulo,imagen_url,orden,activo) VALUES (?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('ssii',$titulo,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_fotos=$ok?'✅ Foto guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_fotos='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_foto'])) {
-  @$conexion->query("DELETE FROM fotos WHERE id=".(int)$_GET['del_foto']);
-  $msg_fotos='🗑️ Foto eliminada';
-}
-
-// ==================== Videos ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='videos') {
-  $id     =(int)($_POST['id']??0);
-  $titulo = $_POST['titulo']??'';
-  $tipo   = $_POST['tipo']??'youtube';
-  $video  = up_or_url2('video_file','video_url', $_POST['video_url']??'');
-  $cover  = up_or_url('cover_url', $_POST['cover_url']??'');
-  $orden  = (int)($_POST['orden']??0);
-  $activo = isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE videos SET titulo=?, video_url=?, tipo=?, cover_url=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('ssssiii',$titulo,$video,$tipo,$cover,$orden,$activo,$id); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_videos='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO videos (titulo,video_url,tipo,cover_url,orden,activo) VALUES (?,?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('ssssii',$titulo,$video,$tipo,$cover,$orden,$activo); $ok=$stmt->execute(); $msg_videos=$ok?'✅ Video guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_videos='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_video'])) {
-  @$conexion->query("DELETE FROM videos WHERE id=".(int)$_GET['del_video']);
-  $msg_videos='🗑️ Video eliminado';
-}
-
-// ==================== Ofertas ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ofertas') {
-  $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??'';
-  $descripcion=$_POST['descripcion']??'';
-  $precio=(float)($_POST['precio']??0);
-  $desde=$_POST['vigente_desde']??null;
-  $hasta=$_POST['vigente_hasta']??null;
-  $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0);
-  $activo=isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("
-      UPDATE ofertas
-         SET titulo=?, descripcion=?, precio=?, vigente_desde=?, vigente_hasta=?, imagen_url=?, orden=?, activo=?
-       WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('ssdsssiii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_ofe='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("
-      INSERT INTO ofertas (titulo,descripcion,precio,vigente_desde,vigente_hasta,imagen_url,orden,activo)
-      VALUES (?,?,?,?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('ssdsssii', $titulo,$descripcion,$precio,$desde,$hasta,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_ofe=$ok?'✅ Oferta guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_ofe='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_ofe'])) {
-  @$conexion->query("DELETE FROM ofertas WHERE id=".(int)$_GET['del_ofe']);
-  $msg_ofe='🗑️ Oferta eliminada';
-}
-
-// ==================== Promociones ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='promociones') {
-  $id=(int)($_POST['id']??0);
-  $titulo=$_POST['titulo']??''; $descripcion=$_POST['descripcion']??'';
-  $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE promociones SET titulo=?, descripcion=?, imagen_url=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('sssiii',$titulo,$descripcion,$imagen,$orden,$activo,$id); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción actualizada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_promo='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO promociones (titulo,descripcion,imagen_url,orden,activo) VALUES (?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('sssii',$titulo,$descripcion,$imagen,$orden,$activo); $ok=$stmt->execute(); $msg_promo=$ok?'✅ Promoción guardada':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_promo='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_promo'])) {
-  @$conexion->query("DELETE FROM promociones WHERE id=".(int)$_GET['del_promo']);
-  $msg_promo='🗑️ Promoción eliminada';
-}
-
-// ==================== Ventas ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='ventas') {
-  $id=(int)($_POST['id']??0);
-  $nombre=$_POST['nombre']??''; $descripcion=$_POST['descripcion']??'';
-  $precio=(float)($_POST['precio']??0); $stock=(int)($_POST['stock']??0);
-  $imagen=up_or_url('imagen_url', $_POST['imagen_url']??'');
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE ventas SET nombre=?, descripcion=?, precio=?, imagen_url=?, stock=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('ssdsiiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo,$id); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_ven='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO ventas (nombre,descripcion,precio,imagen_url,stock,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('ssdsiii', $nombre,$descripcion,$precio,$imagen,$stock,$orden,$activo); $ok=$stmt->execute(); $msg_ven=$ok?'✅ Producto guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_ven='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_ven'])) {
-  @$conexion->query("DELETE FROM ventas WHERE id=".(int)$_GET['del_ven']);
-  $msg_ven='🗑️ Producto eliminado';
-}
-
-// ==================== Equipo ====================
-if ($db_ok && $_SERVER['REQUEST_METHOD']==='POST' && ($_POST['__form']??'')==='equipo') {
-  $id=(int)($_POST['id']??0);
-  $nombre=$_POST['nombre']??''; $rol=$_POST['rol']??''; $bio=$_POST['bio']??'';
-  $foto=up_or_url('foto_url', $_POST['foto_url']??''); $insta=$_POST['instagram']??'';
-  $orden=(int)($_POST['orden']??0); $activo=isset($_POST['activo'])?1:0;
-
-  if ($id>0){
-    $err=''; $stmt=stmt_or_err("UPDATE equipo SET nombre=?, rol=?, bio=?, foto_url=?, instagram=?, orden=?, activo=? WHERE id=?", $err);
-    if ($stmt){ $stmt->bind_param('sssssiii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo,$id); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro actualizado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_eq='❌ Error SQL: '.$err; }
-  } else {
-    $err=''; $stmt=stmt_or_err("INSERT INTO equipo (nombre,rol,bio,foto_url,instagram,orden,activo) VALUES (?,?,?,?,?,?,?)", $err);
-    if ($stmt){ $stmt->bind_param('sssssii',$nombre,$rol,$bio,$foto,$insta,$orden,$activo); $ok=$stmt->execute(); $msg_eq=$ok?'✅ Miembro guardado':'❌ Error: '.$stmt->error; $stmt->close(); }
-    else { $msg_eq='❌ Error SQL: '.$err; }
-  }
-}
-if ($db_ok && isset($_GET['del_eq'])) {
-  @$conexion->query("DELETE FROM equipo WHERE id=".(int)$_GET['del_eq']);
-  $msg_eq='🗑️ Miembro eliminado';
+// ==================== BORRAR (GET) ====================
+if ($db_ok) {
+  if (isset($_GET['del_disc'])) { @$conexion->query("DELETE FROM disciplinas  WHERE id=".(int)$_GET['del_disc']);  $msg_disc='🗑️ Disciplina eliminada'; }
+  if (isset($_GET['del_foto'])) { @$conexion->query("DELETE FROM fotos        WHERE id=".(int)$_GET['del_foto']);  $msg_fotos='🗑️ Foto eliminada'; }
+  if (isset($_GET['del_video'])){ @$conexion->query("DELETE FROM videos       WHERE id=".(int)$_GET['del_video']); $msg_videos='🗑️ Video eliminado'; }
+  if (isset($_GET['del_ofe']))  { @$conexion->query("DELETE FROM ofertas      WHERE id=".(int)$_GET['del_ofe']);   $msg_ofe='🗑️ Oferta eliminada'; }
+  if (isset($_GET['del_promo'])){ @$conexion->query("DELETE FROM promociones  WHERE id=".(int)$_GET['del_promo']); $msg_promo='🗑️ Promoción eliminada'; }
+  if (isset($_GET['del_ven']))  { @$conexion->query("DELETE FROM ventas       WHERE id=".(int)$_GET['del_ven']);   $msg_ven='🗑️ Producto eliminado'; }
+  if (isset($_GET['del_eq']))   { @$conexion->query("DELETE FROM equipo       WHERE id=".(int)$_GET['del_eq']);    $msg_eq='🗑️ Miembro eliminado'; }
 }
 
 // ==================== Listados (últimos 15) ====================
@@ -521,6 +520,15 @@ if ($db_ok) {
   try { $r=$conexion->query("SELECT * FROM ventas       ORDER BY ".order_by($conexion,'ventas')."       LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $ventas[]=$x; } catch(Throwable $e) {}
   try { $r=$conexion->query("SELECT * FROM equipo       ORDER BY ".order_by($conexion,'equipo')."       LIMIT 15"); if($r) while($x=$r->fetch_assoc()) $equipo[]=$x; } catch(Throwable $e) {}
 }
+
+// ==================== EDITAR (precarga) ====================
+$ed_disc = isset($_GET['edit_disc'])  ? fetch_by_id('disciplinas',(int)$_GET['edit_disc']) : null;
+$ed_foto = isset($_GET['edit_foto'])  ? fetch_by_id('fotos',(int)$_GET['edit_foto'])       : null;
+$ed_video= isset($_GET['edit_video']) ? fetch_by_id('videos',(int)$_GET['edit_video'])     : null;
+$ed_ofe  = isset($_GET['edit_ofe'])   ? fetch_by_id('ofertas',(int)$_GET['edit_ofe'])      : null;
+$ed_promo= isset($_GET['edit_promo']) ? fetch_by_id('promociones',(int)$_GET['edit_promo']): null;
+$ed_ven  = isset($_GET['edit_ven'])   ? fetch_by_id('ventas',(int)$_GET['edit_ven'])       : null;
+$ed_eq   = isset($_GET['edit_eq'])    ? fetch_by_id('equipo',(int)$_GET['edit_eq'])        : null;
 
 // Para mostrar estado de Cloudinary
 $cld_ok = ($CLD_NAME !== '' && $CLD_PRESET !== '');
@@ -552,6 +560,8 @@ img.thumb{height:52px;border-radius:8px}
 .badge{font-size:.85rem;opacity:.85}
 .inline{display:flex;gap:8px;align-items:center}
 .small{font-size:.9rem;opacity:.85}
+.actions a{margin-right:8px}
+.editing{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35)}
 </style>
 </head>
 <body>
@@ -576,7 +586,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_cfg): ?><div class="msg"><?=h($msg_cfg)?></div><?php endif; ?>
 
   <!-- ==================== CONFIG BÁSICA ==================== -->
-  <form method="post" class="card">
+  <form method="post" class="card" id="sec-config">
     <input type="hidden" name="__form" value="config">
     <h2>Colores & Fondo</h2>
     <div class="grid">
@@ -618,31 +628,35 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== DISCIPLINAS ==================== -->
   <?php if($msg_disc): ?><div class="msg"><?=h($msg_disc)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Disciplinas — alta rápida</h2>
+  <div class="card <?= $ed_disc?'editing':'' ?>" id="sec-disc">
+    <h2><?= $ed_disc ? 'Editar disciplina #'.(int)$ed_disc['id'] : 'Disciplinas — alta rápida' ?></h2>
+    <?php if($ed_disc): ?><div class="small">Estás editando. <a class="link" href="#sec-disc">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="disciplinas"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="disciplinas"><input type="hidden" name="id" value="<?= (int)($ed_disc['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Título</label><input type="text" name="titulo" required></div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Título</label><input type="text" name="titulo" required value="<?= h(arr_get($ed_disc,'titulo','')) ?>"></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_disc,'orden',0) ?>"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"><?= h(arr_get($ed_disc,'descripcion','')) ?></textarea></div>
         <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
-            <input type="text" name="imagen_url" id="disc-img-url" placeholder="https://...">
+            <input type="text" name="imagen_url" id="disc-img-url" placeholder="https://..." value="<?= h(arr_get($ed_disc,'imagen_url','')) ?>">
             <button type="button" class="btn" id="btn-disc-img">Subir a la nube</button>
           </div>
-          <img id="disc-img-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="disc-img-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_disc,'imagen_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_disc,'imagen_url','')) ?>">
         </div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_disc,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar disciplina</button></div>
+      <div style="margin-top:12px">
+        <button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_disc?'Guardar cambios':'Guardar disciplina' ?></button>
+        <?php if($ed_disc): ?> <a class="link" href="#sec-disc">Cancelar</a><?php endif; ?>
+      </div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15</h3>
     <table>
-      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($disciplinas as $r): ?>
         <tr>
@@ -651,7 +665,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_disc=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_disc=<?=$r['id']?>#sec-disc">Editar</a>
+            <a class="link" href="?del_disc=<?=$r['id']?>#sec-disc" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$disciplinas): ?><tr><td colspan="6">Sin disciplinas</td></tr><?php endif; ?>
       </tbody>
@@ -660,30 +677,31 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== FOTOS ==================== -->
   <?php if($msg_fotos): ?><div class="msg"><?=h($msg_fotos)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Galería de Fotos — alta rápida</h2>
+  <div class="card <?= $ed_foto?'editing':'' ?>" id="sec-fotos">
+    <h2><?= $ed_foto ? 'Editar foto #'.(int)$ed_foto['id'] : 'Galería de Fotos — alta rápida' ?></h2>
+    <?php if($ed_foto): ?><div class="small">Estás editando. <a class="link" href="#sec-fotos">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="fotos"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="fotos"><input type="hidden" name="id" value="<?= (int)($ed_foto['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Título</label><input type="text" name="titulo"></div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
+        <div><label>Título</label><input type="text" name="titulo" value="<?= h(arr_get($ed_foto,'titulo','')) ?>"></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_foto,'orden',0) ?>"></div>
         <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
-            <input type="text" name="imagen_url" id="foto-url" placeholder="https://...">
+            <input type="text" name="imagen_url" id="foto-url" placeholder="https://..." value="<?= h(arr_get($ed_foto,'imagen_url','')) ?>">
             <button type="button" class="btn" id="cld-foto-btn">Subir a la nube</button>
           </div>
-          <img id="foto-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="foto-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_foto,'imagen_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_foto,'imagen_url','')) ?>">
         </div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_foto,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar foto</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_foto?'Guardar cambios':'Guardar foto' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 fotos</h3>
     <table>
-      <thead><tr><th>ID</th><th>Preview</th><th>Título</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Preview</th><th>Título</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($fotos as $r): ?>
         <tr>
@@ -692,7 +710,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_foto=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_foto=<?=$r['id']?>#sec-fotos">Editar</a>
+            <a class="link" href="?del_foto=<?=$r['id']?>#sec-fotos" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$fotos): ?><tr><td colspan="6">Sin fotos</td></tr><?php endif; ?>
       </tbody>
@@ -701,19 +722,21 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== VIDEOS ==================== -->
   <?php if($msg_videos): ?><div class="msg"><?=h($msg_videos)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Videos cortos / Reels — alta rápida</h2>
+  <div class="card <?= $ed_video?'editing':'' ?>" id="sec-videos">
+    <h2><?= $ed_video ? 'Editar video #'.(int)$ed_video['id'] : 'Videos cortos / Reels — alta rápida' ?></h2>
+    <?php if($ed_video): ?><div class="small">Estás editando. <a class="link" href="#sec-videos">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="videos"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="videos"><input type="hidden" name="id" value="<?= (int)($ed_video['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Título</label><input type="text" name="titulo"></div>
+        <div><label>Título</label><input type="text" name="titulo" value="<?= h(arr_get($ed_video,'titulo','')) ?>"></div>
 
         <div>
           <label>Tipo</label>
           <select name="tipo">
-            <option value="youtube">YouTube</option>
-            <option value="instagram">Instagram</option>
-            <option value="mp4">MP4 (archivo o link)</option>
+            <?php $tipo = arr_get($ed_video,'tipo','youtube'); ?>
+            <option value="youtube"   <?= $tipo==='youtube'?'selected':'' ?>>YouTube</option>
+            <option value="instagram" <?= $tipo==='instagram'?'selected':'' ?>>Instagram</option>
+            <option value="mp4"       <?= $tipo==='mp4'?'selected':'' ?>>MP4 (archivo o link)</option>
           </select>
         </div>
 
@@ -726,7 +749,7 @@ img.thumb{height:52px;border-radius:8px}
         <div>
           <label>Video URL</label>
           <div class="inline">
-            <input type="url" name="video_url" id="video-url" placeholder="https://youtu.be/ID · https://www.instagram.com/p/... · https://.../video.mp4">
+            <input type="url" name="video_url" id="video-url" placeholder="https://..." value="<?= h(arr_get($ed_video,'video_url','')) ?>">
             <button type="button" class="btn" id="cld-video-btn">Subir a la nube</button>
           </div>
           <div id="video-hint" class="badge"></div>
@@ -739,21 +762,21 @@ img.thumb{height:52px;border-radius:8px}
         <div>
           <label>Cover (URL)</label>
           <div class="inline">
-            <input type="url" name="cover_url" id="cover-url" placeholder="https://...">
+            <input type="url" name="cover_url" id="cover-url" placeholder="https://..." value="<?= h(arr_get($ed_video,'cover_url','')) ?>">
             <button type="button" class="btn" id="cld-cover-btn">Subir cover</button>
           </div>
-          <img id="cover-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="cover-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_video,'cover_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_video,'cover_url','')) ?>">
         </div>
 
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_video,'orden',0) ?>"></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_video,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar video</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_video?'Guardar cambios':'Guardar video' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 videos</h3>
     <table>
-      <thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>URL</th><th>Cover</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>URL</th><th>Cover</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($videos as $r): ?>
         <tr>
@@ -764,7 +787,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= !empty($r['cover_url'])?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_video=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_video=<?=$r['id']?>#sec-videos">Editar</a>
+            <a class="link" href="?del_video=<?=$r['id']?>#sec-videos" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$videos): ?><tr><td colspan="8">Sin videos</td></tr><?php endif; ?>
       </tbody>
@@ -773,34 +799,35 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== OFERTAS ==================== -->
   <?php if($msg_ofe): ?><div class="msg"><?=h($msg_ofe)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Ofertas — alta rápida</h2>
+  <div class="card <?= $ed_ofe?'editing':'' ?>" id="sec-ofe">
+    <h2><?= $ed_ofe ? 'Editar oferta #'.(int)$ed_ofe['id'] : 'Ofertas — alta rápida' ?></h2>
+    <?php if($ed_ofe): ?><div class="small">Estás editando. <a class="link" href="#sec-ofe">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="ofertas"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="ofertas"><input type="hidden" name="id" value="<?= (int)($ed_ofe['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Título</label><input type="text" name="titulo" required></div>
-        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
-        <div><label>Vigente desde</label><input type="date" name="vigente_desde"></div>
-        <div><label>Vigente hasta</label><input type="date" name="vigente_hasta"></div>
-        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Título</label><input type="text" name="titulo" required value="<?= h(arr_get($ed_ofe,'titulo','')) ?>"></div>
+        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="<?= h(arr_get($ed_ofe,'precio','0')) ?>"></div>
+        <div><label>Vigente desde</label><input type="date" name="vigente_desde" value="<?= h(arr_get($ed_ofe,'vigente_desde','')) ?>"></div>
+        <div><label>Vigente hasta</label><input type="date" name="vigente_hasta" value="<?= h(arr_get($ed_ofe,'vigente_hasta','')) ?>"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"><?= h(arr_get($ed_ofe,'descripcion','')) ?></textarea></div>
         <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
-            <input type="text" name="imagen_url" id="ofe-img-url" placeholder="https://...">
+            <input type="text" name="imagen_url" id="ofe-img-url" placeholder="https://..." value="<?= h(arr_get($ed_ofe,'imagen_url','')) ?>">
             <button type="button" class="btn" id="btn-ofe-img">Subir a la nube</button>
           </div>
-          <img id="ofe-img-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="ofe-img-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_ofe,'imagen_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_ofe,'imagen_url','')) ?>">
         </div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_ofe,'orden',0) ?>"></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_ofe,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar oferta</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_ofe?'Guardar cambios':'Guardar oferta' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 ofertas</h3>
     <table>
-      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>$</th><th>Desde</th><th>Hasta</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>$</th><th>Desde</th><th>Hasta</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($ofertas as $r): ?>
         <tr>
@@ -812,7 +839,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= h(arr_get($r,'vigente_hasta','')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_ofe=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_ofe=<?=$r['id']?>#sec-ofe">Editar</a>
+            <a class="link" href="?del_ofe=<?=$r['id']?>#sec-ofe" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$ofertas): ?><tr><td colspan="9">Sin ofertas</td></tr><?php endif; ?>
       </tbody>
@@ -821,31 +851,32 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== PROMOCIONES ==================== -->
   <?php if($msg_promo): ?><div class="msg"><?=h($msg_promo)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Promociones — alta rápida</h2>
+  <div class="card <?= $ed_promo?'editing':'' ?>" id="sec-promo">
+    <h2><?= $ed_promo ? 'Editar promoción #'.(int)$ed_promo['id'] : 'Promociones — alta rápida' ?></h2>
+    <?php if($ed_promo): ?><div class="small">Estás editando. <a class="link" href="#sec-promo">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="promociones"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="promociones"><input type="hidden" name="id" value="<?= (int)($ed_promo['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Título</label><input type="text" name="titulo" required></div>
-        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Título</label><input type="text" name="titulo" required value="<?= h(arr_get($ed_promo,'titulo','')) ?>"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"><?= h(arr_get($ed_promo,'descripcion','')) ?></textarea></div>
         <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
-            <input type="text" name="imagen_url" id="promo-img-url" placeholder="https://...">
+            <input type="text" name="imagen_url" id="promo-img-url" placeholder="https://..." value="<?= h(arr_get($ed_promo,'imagen_url','')) ?>">
             <button type="button" class="btn" id="btn-promo-img">Subir a la nube</button>
           </div>
-          <img id="promo-img-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="promo-img-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_promo,'imagen_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_promo,'imagen_url','')) ?>">
         </div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_promo,'orden',0) ?>"></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_promo,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar promoción</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_promo?'Guardar cambios':'Guardar promoción' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimas 15 promociones</h3>
     <table>
-      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Img</th><th>Título</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($promos as $r): ?>
         <tr>
@@ -854,7 +885,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_promo=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_promo=<?=$r['id']?>#sec-promo">Editar</a>
+            <a class="link" href="?del_promo=<?=$r['id']?>#sec-promo" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$promos): ?><tr><td colspan="6">Sin promociones</td></tr><?php endif; ?>
       </tbody>
@@ -863,33 +897,34 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== VENTAS ==================== -->
   <?php if($msg_ven): ?><div class="msg"><?=h($msg_ven)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Ventas (Productos) — alta rápida</h2>
+  <div class="card <?= $ed_ven?'editing':'' ?>" id="sec-ven">
+    <h2><?= $ed_ven ? 'Editar producto #'.(int)$ed_ven['id'] : 'Ventas (Productos) — alta rápida' ?></h2>
+    <?php if($ed_ven): ?><div class="small">Estás editando. <a class="link" href="#sec-ven">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="ventas"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="ventas"><input type="hidden" name="id" value="<?= (int)($ed_ven['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Nombre</label><input type="text" name="nombre" required></div>
-        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="0"></div>
-        <div><label>Stock</label><input type="number" name="stock" value="0"></div>
-        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"></textarea></div>
+        <div><label>Nombre</label><input type="text" name="nombre" required value="<?= h(arr_get($ed_ven,'nombre','')) ?>"></div>
+        <div><label>Precio</label><input type="number" step="0.01" name="precio" value="<?= h(arr_get($ed_ven,'precio','0')) ?>"></div>
+        <div><label>Stock</label><input type="number" name="stock" value="<?= (int)arr_get($ed_ven,'stock',0) ?>"></div>
+        <div class="grid-1"><label>Descripción</label><textarea name="descripcion"><?= h(arr_get($ed_ven,'descripcion','')) ?></textarea></div>
         <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
-            <input type="text" name="imagen_url" id="ven-img-url" placeholder="https://...">
+            <input type="text" name="imagen_url" id="ven-img-url" placeholder="https://..." value="<?= h(arr_get($ed_ven,'imagen_url','')) ?>">
             <button type="button" class="btn" id="btn-ven-img">Subir a la nube</button>
           </div>
-          <img id="ven-img-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="ven-img-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_ven,'imagen_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_ven,'imagen_url','')) ?>">
         </div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_ven,'orden',0) ?>"></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_ven,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar producto</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_ven?'Guardar cambios':'Guardar producto' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 productos</h3>
     <table>
-      <thead><tr><th>ID</th><th>Img</th><th>Nombre</th><th>$</th><th>Stock</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Img</th><th>Nombre</th><th>$</th><th>Stock</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($ventas as $r): ?>
         <tr>
@@ -900,7 +935,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= (int)$r['stock'] ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_ven=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_ven=<?=$r['id']?>#sec-ven">Editar</a>
+            <a class="link" href="?del_ven=<?=$r['id']?>#sec-ven" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$ventas): ?><tr><td colspan="8">Sin productos</td></tr><?php endif; ?>
       </tbody>
@@ -909,33 +947,34 @@ img.thumb{height:52px;border-radius:8px}
 
   <!-- ==================== EQUIPO ==================== -->
   <?php if($msg_eq): ?><div class="msg"><?=h($msg_eq)?></div><?php endif; ?>
-  <div class="card">
-    <h2>Equipo — alta rápida</h2>
+  <div class="card <?= $ed_eq?'editing':'' ?>" id="sec-eq">
+    <h2><?= $ed_eq ? 'Editar miembro #'.(int)$ed_eq['id'] : 'Equipo — alta rápida' ?></h2>
+    <?php if($ed_eq): ?><div class="small">Estás editando. <a class="link" href="#sec-eq">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
-      <input type="hidden" name="__form" value="equipo"><input type="hidden" name="id" value="0">
+      <input type="hidden" name="__form" value="equipo"><input type="hidden" name="id" value="<?= (int)($ed_eq['id'] ?? 0) ?>">
       <div class="grid">
-        <div><label>Nombre</label><input type="text" name="nombre" required></div>
-        <div><label>Rol</label><input type="text" name="rol"></div>
-        <div class="grid-1"><label>Bio</label><textarea name="bio"></textarea></div>
+        <div><label>Nombre</label><input type="text" name="nombre" required value="<?= h(arr_get($ed_eq,'nombre','')) ?>"></div>
+        <div><label>Rol</label><input type="text" name="rol" value="<?= h(arr_get($ed_eq,'rol','')) ?>"></div>
+        <div class="grid-1"><label>Bio</label><textarea name="bio"><?= h(arr_get($ed_eq,'bio','')) ?></textarea></div>
         <div><label>Foto (subir)</label><input type="file" name="foto_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Foto (URL)</label>
           <div class="inline">
-            <input type="text" name="foto_url" id="eq-foto-url" placeholder="https://...">
+            <input type="text" name="foto_url" id="eq-foto-url" placeholder="https://..." value="<?= h(arr_get($ed_eq,'foto_url','')) ?>">
             <button type="button" class="btn" id="btn-eq-foto">Subir a la nube</button>
           </div>
-          <img id="eq-foto-prev" class="thumb" style="margin-top:8px;display:none">
+          <img id="eq-foto-prev" class="thumb" style="margin-top:8px;<?= arr_get($ed_eq,'foto_url','')?'':'display:none' ?>" src="<?= h(arr_get($ed_eq,'foto_url','')) ?>">
         </div>
-        <div><label>Instagram (URL)</label><input type="url" name="instagram" placeholder="https://instagram.com/..."></div>
-        <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label><input type="checkbox" name="activo" checked> Activo</label></div>
+        <div><label>Instagram (URL)</label><input type="url" name="instagram" placeholder="https://instagram.com/..." value="<?= h(arr_get($ed_eq,'instagram','')) ?>"></div>
+        <div><label>Orden</label><input type="number" name="orden" value="<?= (int)arr_get($ed_eq,'orden',0) ?>"></div>
+        <div><label><input type="checkbox" name="activo" <?= (int)arr_get($ed_eq,'activo',1)?'checked':'' ?>> Activo</label></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>>Guardar miembro</button></div>
+      <div style="margin-top:12px"><button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_eq?'Guardar cambios':'Guardar miembro' ?></button></div>
     </form>
 
     <h3 style="margin-top:16px">Últimos 15 miembros</h3>
     <table>
-      <thead><tr><th>ID</th><th>Foto</th><th>Nombre</th><th>Rol</th><th>Orden</th><th>Activo</th><th></th></tr></thead>
+      <thead><tr><th>ID</th><th>Foto</th><th>Nombre</th><th>Rol</th><th>Orden</th><th>Activo</th><th>Acciones</th></tr></thead>
       <tbody>
       <?php foreach($equipo as $r): ?>
         <tr>
@@ -945,7 +984,10 @@ img.thumb{height:52px;border-radius:8px}
           <td><?= h(arr_get($r,'rol','')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
-          <td><a class="link" href="?del_eq=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
+          <td class="actions">
+            <a class="link" href="?edit_eq=<?=$r['id']?>#sec-eq">Editar</a>
+            <a class="link" href="?del_eq=<?=$r['id']?>#sec-eq" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+          </td>
         </tr>
       <?php endforeach; if(!$equipo): ?><tr><td colspan="7">Sin miembros</td></tr><?php endif; ?>
       </tbody>
