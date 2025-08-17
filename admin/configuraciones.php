@@ -21,6 +21,24 @@ if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
 }
 
+// Helpers seguros para arrays/filas
+if (!function_exists('arr_get')) {
+  function arr_get($a, $k, $d = '') {
+    return (is_array($a) && array_key_exists($k, $a)) ? $a[$k] : $d;
+  }
+}
+if (!function_exists('first_of')) {
+  // Devuelve el primer campo existente/no vacío de una fila
+  function first_of(array $row, array $keys, $default = '') {
+    foreach ($keys as $k) {
+      if (array_key_exists($k, $row) && $row[$k] !== null && $row[$k] !== '') {
+        return (string)$row[$k];
+      }
+    }
+    return $default;
+  }
+}
+
 // Lee env de varios lugares y alias
 if (!function_exists('envv')) {
   function envv(array $keys){
@@ -131,6 +149,7 @@ if ($db_ok) {
   ensure_col($conexion,'site_settings','cld_upload_preset',"ADD COLUMN cld_upload_preset VARCHAR(120)");
   @$conexion->query("INSERT IGNORE INTO site_settings (id) VALUES (1)");
 
+  // DISCIPLINAS
   ensure_table($conexion,'disciplinas',"
     CREATE TABLE disciplinas(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -141,9 +160,11 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'disciplinas','titulo',"ADD COLUMN titulo VARCHAR(150) NOT NULL DEFAULT ''");
   ensure_col($conexion,'disciplinas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'disciplinas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // FOTOS
   ensure_table($conexion,'fotos',"
     CREATE TABLE fotos(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -153,9 +174,11 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'fotos','titulo',"ADD COLUMN titulo VARCHAR(150) NULL");
   ensure_col($conexion,'fotos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'fotos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // VIDEOS
   ensure_table($conexion,'videos',"
     CREATE TABLE videos(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -167,11 +190,13 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'videos','titulo',"ADD COLUMN titulo VARCHAR(150) NULL");
   ensure_col($conexion,'videos','tipo',"ADD COLUMN tipo VARCHAR(20) DEFAULT 'youtube'");
   ensure_col($conexion,'videos','cover_url',"ADD COLUMN cover_url VARCHAR(255)");
   ensure_col($conexion,'videos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'videos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // OFERTAS
   ensure_table($conexion,'ofertas',"
     CREATE TABLE ofertas(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -185,6 +210,7 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'ofertas','titulo',"ADD COLUMN titulo VARCHAR(150) NOT NULL DEFAULT ''");
   ensure_col($conexion,'ofertas','precio',"ADD COLUMN precio DECIMAL(10,2) NOT NULL DEFAULT 0");
   ensure_col($conexion,'ofertas','vigente_desde',"ADD COLUMN vigente_desde DATE NULL");
   ensure_col($conexion,'ofertas','vigente_hasta',"ADD COLUMN vigente_hasta DATE NULL");
@@ -192,6 +218,7 @@ if ($db_ok) {
   ensure_col($conexion,'ofertas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'ofertas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // PROMOCIONES
   ensure_table($conexion,'promociones',"
     CREATE TABLE promociones(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -202,10 +229,12 @@ if ($db_ok) {
       activo TINYINT(1) NOT NULL DEFAULT 1
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
+  ensure_col($conexion,'promociones','titulo',"ADD COLUMN titulo VARCHAR(150) NOT NULL DEFAULT ''");
   ensure_col($conexion,'promociones','imagen_url',"ADD COLUMN imagen_url VARCHAR(255)");
   ensure_col($conexion,'promociones','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'promociones','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // VENTAS
   ensure_table($conexion,'ventas',"
     CREATE TABLE ventas(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -224,6 +253,7 @@ if ($db_ok) {
   ensure_col($conexion,'ventas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'ventas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
+  // EQUIPO
   ensure_table($conexion,'equipo',"
     CREATE TABLE equipo(
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -618,7 +648,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_disc=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -637,7 +667,7 @@ img.thumb{height:52px;border-radius:8px}
       <div class="grid">
         <div><label>Título</label><input type="text" name="titulo"></div>
         <div><label>Orden</label><input type="number" name="orden" value="0"></div>
-        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: usar URL Cloudinary</div></div>
+        <div><label>Imagen (subir)</label><input type="file" name="imagen_url" accept="image/*"><div class="badge">Ideal: URL Cloudinary</div></div>
         <div>
           <label>Imagen (URL)</label>
           <div class="inline">
@@ -659,7 +689,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_foto=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -728,8 +758,8 @@ img.thumb{height:52px;border-radius:8px}
       <?php foreach($videos as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td><?= h($r['titulo']) ?></td>
-          <td><?= h($r['tipo']) ?></td>
+          <td><?= h(first_of($r, ['titulo','nombre','title'], '(sin título)')) ?></td>
+          <td><?= h(arr_get($r,'tipo','')) ?></td>
           <td><?= !empty($r['video_url']) ? '<a class="link" href="'.h($r['video_url']).'" target="_blank">Abrir</a>' : '' ?></td>
           <td><?= !empty($r['cover_url'])?'<img class="thumb" src="'.h($r['cover_url']).'">':'' ?></td>
           <td><?= (int)$r['orden'] ?></td>
@@ -776,10 +806,10 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
-          <td><?= h($r['vigente_desde']) ?></td>
-          <td><?= h($r['vigente_hasta']) ?></td>
+          <td><?= h(arr_get($r,'vigente_desde','')) ?></td>
+          <td><?= h(arr_get($r,'vigente_hasta','')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_ofe=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -821,7 +851,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['titulo']) ?></td>
+          <td><?= h(first_of($r, ['titulo','nombre','title','descripcion','slug'], '(sin título)')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_promo=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
@@ -865,7 +895,7 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['imagen_url'])?'<img class="thumb" src="'.h($r['imagen_url']).'">':'' ?></td>
-          <td><?= h($r['nombre']) ?></td>
+          <td><?= h(first_of($r, ['nombre','titulo','name'], '(sin nombre)')) ?></td>
           <td><?= number_format((float)$r['precio'],2,',','.') ?></td>
           <td><?= (int)$r['stock'] ?></td>
           <td><?= (int)$r['orden'] ?></td>
@@ -911,8 +941,8 @@ img.thumb{height:52px;border-radius:8px}
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td><?= !empty($r['foto_url'])?'<img class="thumb" src="'.h($r['foto_url']).'">':'' ?></td>
-          <td><?= h($r['nombre']) ?></td>
-          <td><?= h($r['rol']) ?></td>
+          <td><?= h(first_of($r, ['nombre','titulo','name'], '(sin nombre)')) ?></td>
+          <td><?= h(arr_get($r,'rol','')) ?></td>
           <td><?= (int)$r['orden'] ?></td>
           <td><?= !empty($r['activo'])?'Sí':'No' ?></td>
           <td><a class="link" href="?del_eq=<?=$r['id']?>" onclick="return confirm('¿Eliminar?')">Eliminar</a></td>
