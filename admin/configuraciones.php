@@ -85,7 +85,7 @@ if (!function_exists('up_or_url2')) {
       $fn  = time().'_'.mt_rand(100000,999999).($ext?'.'.$ext:'');
       $dest = $dir.'/'.$fn;
       if (@move_uploaded_file($_FILES[$fileField]['tmp_name'], $dest)) {
-        return '/uploads/'.$fn';
+        return '/uploads/'.$fn;
       }
     }
     return $fallback;
@@ -557,7 +557,7 @@ a.link{color:#22c55e;text-decoration:none}
 .grid-1{grid-template-columns:1fr}
 label{font-weight:600}
 input,textarea,select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:#fff}
-textarea{min_height:90px}
+textarea{min-height:90px}
 .btn{background:#22c55e;border:0;color:#000;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer}
 .btn[disabled]{opacity:.6;cursor:not-allowed}
 .msg{margin:12px 0;padding:10px;border-radius:8px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35)}
