@@ -1,7 +1,8 @@
 <?php
 // admin/configuraciones.php — Panel Único (SIN LOGIN)
 ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Evitar spam de deprecated/notices en el panel
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 
 // ==================== Conexión ====================
 require __DIR__ . '/../conexion.php';
@@ -15,7 +16,10 @@ if ($db_ok) {
 
 // ==================== Helpers ====================
 if (!function_exists('h')) {
-  function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+  function h($s){
+    if ($s === null) $s = '';
+    return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  }
 }
 if (!function_exists('v')) {
   function v($k,$d=''){ global $data; return h($data[$k]??$d); }
@@ -175,6 +179,8 @@ if ($db_ok) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
   ensure_col($conexion,'disciplinas','titulo',"ADD COLUMN titulo VARCHAR(150) NOT NULL DEFAULT ''");
+  ensure_col($conexion,'disciplinas','descripcion',"ADD COLUMN descripcion TEXT NULL AFTER titulo");
+  ensure_col($conexion,'disciplinas','imagen_url',"ADD COLUMN imagen_url VARCHAR(255) NULL AFTER descripcion");
   ensure_col($conexion,'disciplinas','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'disciplinas','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
@@ -189,6 +195,7 @@ if ($db_ok) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
   ensure_col($conexion,'fotos','titulo',"ADD COLUMN titulo VARCHAR(150) NULL");
+  ensure_col($conexion,'fotos','imagen_url',"ADD COLUMN imagen_url VARCHAR(255) NULL AFTER titulo");
   ensure_col($conexion,'fotos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
   ensure_col($conexion,'fotos','activo',"ADD COLUMN activo TINYINT(1) NOT NULL DEFAULT 1");
 
@@ -205,6 +212,7 @@ if ($db_ok) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   ");
   ensure_col($conexion,'videos','titulo',"ADD COLUMN titulo VARCHAR(150) NULL");
+  ensure_col($conexion,'videos','video_url',"ADD COLUMN video_url VARCHAR(255) NULL AFTER titulo");
   ensure_col($conexion,'videos','tipo',"ADD COLUMN tipo VARCHAR(20) DEFAULT 'youtube'");
   ensure_col($conexion,'videos','cover_url',"ADD COLUMN cover_url VARCHAR(255)");
   ensure_col($conexion,'videos','orden',"ADD COLUMN orden INT NOT NULL DEFAULT 0");
@@ -630,7 +638,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_disc): ?><div class="msg"><?=h($msg_disc)?></div><?php endif; ?>
   <div class="card <?= $ed_disc?'editing':'' ?>" id="sec-disc">
     <h2><?= $ed_disc ? 'Editar disciplina #'.(int)$ed_disc['id'] : 'Disciplinas — alta rápida' ?></h2>
-    <?php if($ed_disc): ?><div class="small">Estás editando. <a class="link" href="#sec-disc">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_disc): ?><div class="small">Estás editando. <a class="link" href="?#sec-disc">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="disciplinas"><input type="hidden" name="id" value="<?= (int)($ed_disc['id'] ?? 0) ?>">
       <div class="grid">
@@ -650,7 +658,7 @@ img.thumb{height:52px;border-radius:8px}
       </div>
       <div style="margin-top:12px">
         <button class="btn" type="submit" <?= !$db_ok?'disabled':''; ?>><?= $ed_disc?'Guardar cambios':'Guardar disciplina' ?></button>
-        <?php if($ed_disc): ?> <a class="link" href="#sec-disc">Cancelar</a><?php endif; ?>
+        <?php if($ed_disc): ?> <a class="link" href="?#sec-disc">Cancelar</a><?php endif; ?>
       </div>
     </form>
 
@@ -679,7 +687,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_fotos): ?><div class="msg"><?=h($msg_fotos)?></div><?php endif; ?>
   <div class="card <?= $ed_foto?'editing':'' ?>" id="sec-fotos">
     <h2><?= $ed_foto ? 'Editar foto #'.(int)$ed_foto['id'] : 'Galería de Fotos — alta rápida' ?></h2>
-    <?php if($ed_foto): ?><div class="small">Estás editando. <a class="link" href="#sec-fotos">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_foto): ?><div class="small">Estás editando. <a class="link" href="?#sec-fotos">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="fotos"><input type="hidden" name="id" value="<?= (int)($ed_foto['id'] ?? 0) ?>">
       <div class="grid">
@@ -724,7 +732,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_videos): ?><div class="msg"><?=h($msg_videos)?></div><?php endif; ?>
   <div class="card <?= $ed_video?'editing':'' ?>" id="sec-videos">
     <h2><?= $ed_video ? 'Editar video #'.(int)$ed_video['id'] : 'Videos cortos / Reels — alta rápida' ?></h2>
-    <?php if($ed_video): ?><div class="small">Estás editando. <a class="link" href="#sec-videos">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_video): ?><div class="small">Estás editando. <a class="link" href="?#sec-videos">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="videos"><input type="hidden" name="id" value="<?= (int)($ed_video['id'] ?? 0) ?>">
       <div class="grid">
@@ -801,7 +809,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_ofe): ?><div class="msg"><?=h($msg_ofe)?></div><?php endif; ?>
   <div class="card <?= $ed_ofe?'editing':'' ?>" id="sec-ofe">
     <h2><?= $ed_ofe ? 'Editar oferta #'.(int)$ed_ofe['id'] : 'Ofertas — alta rápida' ?></h2>
-    <?php if($ed_ofe): ?><div class="small">Estás editando. <a class="link" href="#sec-ofe">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_ofe): ?><div class="small">Estás editando. <a class="link" href="?#sec-ofe">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="ofertas"><input type="hidden" name="id" value="<?= (int)($ed_ofe['id'] ?? 0) ?>">
       <div class="grid">
@@ -853,7 +861,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_promo): ?><div class="msg"><?=h($msg_promo)?></div><?php endif; ?>
   <div class="card <?= $ed_promo?'editing':'' ?>" id="sec-promo">
     <h2><?= $ed_promo ? 'Editar promoción #'.(int)$ed_promo['id'] : 'Promociones — alta rápida' ?></h2>
-    <?php if($ed_promo): ?><div class="small">Estás editando. <a class="link" href="#sec-promo">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_promo): ?><div class="small">Estás editando. <a class="link" href="?#sec-promo">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="promociones"><input type="hidden" name="id" value="<?= (int)($ed_promo['id'] ?? 0) ?>">
       <div class="grid">
@@ -899,7 +907,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_ven): ?><div class="msg"><?=h($msg_ven)?></div><?php endif; ?>
   <div class="card <?= $ed_ven?'editing':'' ?>" id="sec-ven">
     <h2><?= $ed_ven ? 'Editar producto #'.(int)$ed_ven['id'] : 'Ventas (Productos) — alta rápida' ?></h2>
-    <?php if($ed_ven): ?><div class="small">Estás editando. <a class="link" href="#sec-ven">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_ven): ?><div class="small">Estás editando. <a class="link" href="?#sec-ven">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="ventas"><input type="hidden" name="id" value="<?= (int)($ed_ven['id'] ?? 0) ?>">
       <div class="grid">
@@ -949,7 +957,7 @@ img.thumb{height:52px;border-radius:8px}
   <?php if($msg_eq): ?><div class="msg"><?=h($msg_eq)?></div><?php endif; ?>
   <div class="card <?= $ed_eq?'editing':'' ?>" id="sec-eq">
     <h2><?= $ed_eq ? 'Editar miembro #'.(int)$ed_eq['id'] : 'Equipo — alta rápida' ?></h2>
-    <?php if($ed_eq): ?><div class="small">Estás editando. <a class="link" href="#sec-eq">Cancelar edición</a></div><?php endif; ?>
+    <?php if($ed_eq): ?><div class="small">Estás editando. <a class="link" href="?#sec-eq">Cancelar edición</a></div><?php endif; ?>
     <form method="post" enctype="multipart/form-data">
       <input type="hidden" name="__form" value="equipo"><input type="hidden" name="id" value="<?= (int)($ed_eq['id'] ?? 0) ?>">
       <div class="grid">
